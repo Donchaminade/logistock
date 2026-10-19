@@ -96,7 +96,7 @@ export default function LoginPage() {
               void doLogin(identifier, password, "form");
             }}
           >
-            <Field label="E-mail ou téléphone" hint="Le numéro se saisit avec ou sans indicatif : +228, 00228 ou 228.">
+            <Field label="E-mail ou téléphone" hint="Le numéro se saisit avec ou sans indicatif, togolais ou non : +228, +229, +33, 00228…">
               <Input autoComplete="username" placeholder="nom@exemple.com ou 90 12 34 56" value={identifier} onChange={(e) => setIdentifier(e.target.value)} name="phone" />
             </Field>
             <Field label="Mot de passe">

@@ -3,7 +3,7 @@
 import { dataSource } from "@/data";
 import { currentPrice, metrics, simulateRevision } from "@/lib/calc";
 import { fingerprint, uid } from "@/lib/hash";
-import { formatLocalPhone, isEmail, localPhone, normEmail, samePhone } from "@/lib/identity";
+import { bestPhoneMatch, canonicalPhone, isEmail, normEmail, phoneDigitCount, samePhone } from "@/lib/identity";
 import { fcfa, prixKg, tonnes } from "@/lib/format";
 import { can, deleteMode } from "@/lib/permissions";
 import type {
@@ -66,7 +66,7 @@ export async function login(identifier: string, password: string): Promise<User>
   const byEmail = raw.includes("@");
   const u = byEmail
     ? users.find((x) => x.email && normEmail(x.email) === normEmail(raw))
-    : users.find((x) => samePhone(x.phone, raw));
+    : bestPhoneMatch(users, raw, (x) => x.phone);
   assert(u && u.password === password, "E-mail, numéro ou mot de passe incorrect.");
   assert(u.active, "Ce compte est désactivé. Contactez le patron.");
   ds().session.set(u.id);
@@ -86,15 +86,15 @@ export async function changePassword(me: User, pwd: string) {
 export async function createSupplier(me: User, input: { name: string; phone: string; email?: string; zone: string; product: Product }) {
   assert(me.role === "patron", "Seul le patron peut créer un compte fournisseur.");
   assert(input.name.trim().length > 2, "Le nom est obligatoire.");
-  const digits = localPhone(input.phone);
-  assert(digits.length === 8, "Le numéro doit comporter 8 chiffres, avec ou sans indicatif +228 (ex. 90 12 34 56).");
+  const count = phoneDigitCount(input.phone);
+  assert(count >= 8 && count <= 15, "Le numéro doit comporter de 8 à 15 chiffres, avec ou sans indicatif (ex. 90 12 34 56, +229 97 00 00 00, +33 6 12 34 56 78).");
   const email = input.email?.trim() ? normEmail(input.email) : undefined;
   if (email) assert(isEmail(email), "L'adresse e-mail n'est pas valide.");
   const users = await ds().repos.users.list();
-  assert(!users.some((u) => samePhone(u.phone, digits)), "Ce numéro est déjà utilisé par un autre compte.");
+  assert(!users.some((u) => samePhone(u.phone, input.phone)), "Ce numéro est déjà utilisé par un autre compte.");
   if (email) assert(!users.some((u) => u.email && normEmail(u.email) === email), "Cet e-mail est déjà utilisé par un autre compte.");
   const temp = `LS-${Math.floor(1000 + Math.random() * 9000)}`;
-  const phone = formatLocalPhone(digits);
+  const phone = canonicalPhone(input.phone);
   const u: User = {
     id: uid("u"), role: "fournisseur", name: input.name.trim(), phone, email, password: temp,
     title: `Fournisseur · ${input.product} · ${input.zone}`, zone: input.zone, active: true, mustChangePassword: true,

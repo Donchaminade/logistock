@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { Button, Photo, PageSkeleton } from "@/components/ui";
 import { metrics } from "@/lib/calc";
 import { date, dateTime, fcfa, modeLabel, prixKg, productLabel, tonnes } from "@/lib/format";
+import { displayPhone } from "@/lib/identity";
 
 export default function Page() {
   return <Suspense fallback={<PageSkeleton />}><Recu /></Suspense>;
@@ -44,7 +45,7 @@ function Recu() {
           <div className="num text-[14px] text-muted">Soit {tonnes(a.qtyKg)} à {prixKg(a.unitPrice)}</div>
           <dl className="num mt-8 grid grid-cols-2 gap-x-8 gap-y-4 text-[14px]">
             {[
-              ["Fournisseur", `${sup.name} · +228 ${sup.phone}`], ["Contrat", `${c.ref} · ${productLabel[c.product]}`],
+              ["Fournisseur", `${sup.name} · ${displayPhone(sup.phone)}`], ["Contrat", `${c.ref} · ${productLabel[c.product]}`],
               ["Quantité", tonnes(a.qtyKg)], ["Prix unitaire", prixKg(a.unitPrice)],
               ["Mode", modeLabel[a.mode]], ["Date de remise", dateTime(a.date)],
               ["Livraison prévue", `${date(c.deliveryDate)} · ${c.deliveryPlace}`], ["Transport", c.transportPaidByPatron ? "Payé par le patron" : "Non payé par le patron"],

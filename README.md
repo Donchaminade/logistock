@@ -30,7 +30,7 @@ L'application s'ouvre directement sur l'écran de connexion. Il n'y a pas de pag
 
 ## Comptes de démo
 
-Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place. Vous pouvez aussi saisir l'e-mail ou le téléphone, et le mot de passe. Le numéro est accepté avec ou sans indicatif (`90 11 22 33`, `+228 90 11 22 33`, `00228 90 11 22 33`).
+Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place. Vous pouvez aussi saisir l'e-mail ou le téléphone, et le mot de passe. Le numéro est accepté avec ou sans indicatif, togolais ou non (`90 11 22 33`, `+228 90 11 22 33`, `00228…`, `+229 97 00 00 00`, `+33 6 12 34 56 78`, `06 12 34 56 78`).
 
 | Rôle | Nom | E-mail | Téléphone (+228) | Mot de passe |
 |---|---|---|---|---|

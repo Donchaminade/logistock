@@ -1,0 +1,159 @@
+"use client";
+import { useEffect } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, LogOut, RotateCcw } from "lucide-react";
+import { logout, resetDemo } from "@/services/actions";
+import { roleLabel } from "@/lib/format";
+import { confirm, toast } from "./alerts";
+import { forMe, useData } from "./DataProvider";
+import { Logo, LogoMark } from "./Logo";
+import { BOTTOM, SIDEBAR, type NavItem } from "./nav";
+import { Avatar, cx, PageSkeleton } from "./ui";
+
+function isActive(path: string, href: string) {
+  if (href === "/accueil/") return path.startsWith("/accueil");
+  return path.startsWith(href.replace(/\/$/, ""));
+}
+
+export async function confirmReset(router: ReturnType<typeof useRouter>) {
+  const ok = await confirm({
+    title: "Réinitialiser la démo ?",
+    html: "Toutes les saisies de la démonstration seront effacées et les données fictives d'origine rechargées, dans tous les onglets ouverts.",
+    confirmText: "Réinitialiser",
+    icon: "warning",
+    dark: true,
+  });
+  if (!ok) return;
+  await resetDemo();
+  toast("Démo réinitialisée", "Les données fictives d'origine sont rechargées.");
+  router.refresh();
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const { db, me, ready } = useData();
+  const path = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (ready && !me) router.replace("/");
+  }, [ready, me, router]);
+
+  if (!ready || !me || !db) {
+    return (
+      <div className="mx-auto max-w-6xl p-6">
+        <PageSkeleton />
+      </div>
+    );
+  }
+
+  const pending = db.pending.filter((p) => p.status === "en_attente" && (me.role === "patron" || p.by === me.id)).length;
+  const unread = db.notifications.filter((n) => forMe(n, me) && !n.readBy.includes(me.id)).length;
+  const badgeOf = (i: NavItem) => (i.badge === "pending" ? pending : i.badge === "notifications" ? unread : 0);
+
+  return (
+    <div className="min-h-dvh lg:pl-[272px]">
+      {/* Barre latérale (ordinateur) */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] flex-col bg-ink text-white lg:flex">
+        <div className="px-6 pb-6 pt-7">
+          <Logo inverted sub="Préfinancement soja et cacao" />
+        </div>
+        <nav className="flex-1 space-y-7 overflow-y-auto px-3">
+          {SIDEBAR[me.role].map((g) => (
+            <div key={g.group}>
+              <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/35">{g.group}</div>
+              <ul className="space-y-0.5">
+                {g.items.map((i) => {
+                  const active = isActive(path, i.href);
+                  const b = badgeOf(i);
+                  return (
+                    <li key={i.href}>
+                      <Link href={i.href} className={cx("flex h-10 items-center gap-3 rounded-xl px-3 text-[14px] font-medium transition-colors", active ? "bg-brand-600 text-white" : "text-white/70 hover:bg-white/5 hover:text-white")}>
+                        <i.icon className="size-[18px]" strokeWidth={2} />
+                        <span className="flex-1">{i.label}</span>
+                        {b > 0 && <span className={cx("num grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold", active ? "bg-white text-brand-700" : "bg-brand-600 text-white")}>{b}</span>}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+        <div className="space-y-1 border-t border-white/10 p-3">
+          <button onClick={() => confirmReset(router)} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium text-white/60 hover:bg-white/5 hover:text-white">
+            <RotateCcw className="size-4" /> Réinitialiser la démo
+          </button>
+          <Link href="/profil/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/5">
+            <Avatar name={me.name} dark />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13.5px] font-semibold">{me.name}</div>
+              <div className="truncate text-[12px] text-white/50">{roleLabel[me.role]}</div>
+            </div>
+          </Link>
+        </div>
+      </aside>
+
+      {/* Barre du haut */}
+      <header className="no-print sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
+          <Link href="/accueil/" className="lg:hidden" aria-label="Accueil LogiStock">
+            <LogoMark className="size-8" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <div className="hidden items-center gap-2 lg:flex">
+              <span className="text-[13px] text-muted">{roleLabel[me.role]}</span>
+              <span className="text-line-2">/</span>
+              <span className="truncate text-[13px] font-semibold">{me.title}</span>
+            </div>
+            <div className="truncate text-[14px] font-bold lg:hidden">LogiStock</div>
+          </div>
+          <span className="hidden rounded-full border border-line-2 px-2.5 py-1 text-[11.5px] font-semibold text-muted sm:inline">Données fictives — démo</span>
+          <Link href="/notifications/" className="relative grid size-10 place-items-center rounded-full text-ink hover:bg-canvas" aria-label={`Notifications (${unread} non lues)`} data-testid="bell">
+            <Bell className="size-5" />
+            {unread > 0 && <span className="num absolute right-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-600 px-1 text-[10.5px] font-bold text-white ring-2 ring-white">{unread}</span>}
+          </Link>
+          <Link href="/profil/" className="lg:hidden" aria-label="Profil">
+            <Avatar name={me.name} size="sm" />
+          </Link>
+          <button
+            onClick={async () => {
+              if (await confirm({ title: "Se déconnecter ?", confirmText: "Déconnexion", dark: true })) {
+                logout();
+                router.replace("/");
+              }
+            }}
+            className="hidden size-10 place-items-center rounded-full text-muted hover:bg-canvas hover:text-ink lg:grid"
+            aria-label="Déconnexion"
+          >
+            <LogOut className="size-[18px]" />
+          </button>
+        </div>
+      </header>
+
+      <main key={me.id} className="mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">{children}</main>
+
+      {/* Bottom nav (téléphone et tablette) */}
+      <nav className="no-print pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white lg:hidden" aria-label="Navigation principale">
+        <ul className="mx-auto grid max-w-xl grid-cols-5">
+          {BOTTOM[me.role].map((i) => {
+            const active = isActive(path, i.href);
+            const b = badgeOf(i);
+            return (
+              <li key={i.href}>
+                <Link href={i.href} className={cx("relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors", active ? "text-brand-600" : "text-muted")}>
+                  {active && <span className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-brand-600" />}
+                  <span className="relative">
+                    <i.icon className="size-[22px]" strokeWidth={active ? 2.4 : 2} />
+                    {b > 0 && <span className="num absolute -right-2.5 -top-1.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">{b}</span>}
+                  </span>
+                  <span className="max-w-full truncate px-1">{i.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </div>
+  );
+}

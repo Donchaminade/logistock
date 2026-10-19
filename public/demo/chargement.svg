@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" width="640" height="480">
+<rect width="640" height="480" fill="#eef1f5"/>
+<rect x="0" y="360" width="640" height="120" fill="#c9ced8"/>
+<rect x="60" y="170" width="360" height="170" rx="6" fill="#ffffff" stroke="#0b0d12" stroke-width="5"/>
+<ellipse cx="110" cy="155" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/><ellipse cx="190" cy="155" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/><ellipse cx="270" cy="155" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/><ellipse cx="350" cy="155" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/><ellipse cx="150" cy="125" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/><ellipse cx="230" cy="125" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/><ellipse cx="310" cy="125" rx="40" ry="22" fill="#d3c7b0" stroke="#8a7a5c" stroke-width="2"/>
+<path d="M420 220 h90 l60 60 v60 h-150z" fill="#1f4fd8" stroke="#0b0d12" stroke-width="5"/><rect x="440" y="235" width="60" height="45" fill="#dbe5ff"/>
+<circle cx="140" cy="350" r="34" fill="#0b0d12"/><circle cx="140" cy="350" r="13" fill="#d3d6dd"/><circle cx="330" cy="350" r="34" fill="#0b0d12"/><circle cx="330" cy="350" r="13" fill="#d3d6dd"/><circle cx="510" cy="350" r="34" fill="#0b0d12"/><circle cx="510" cy="350" r="13" fill="#d3d6dd"/>
+<rect x="470" y="300" width="92" height="22" rx="3" fill="#fff" stroke="#0b0d12" stroke-width="2"/><text x="516" y="316" font-family="monospace" font-size="13" font-weight="700" text-anchor="middle">TG-5520-CA</text>
+<rect x="16" y="428" width="192.0" height="36" rx="10" fill="#0b0d12"/>
+<text x="30" y="451" font-family="Inter, Arial, sans-serif" font-size="14" fill="#ffffff" font-weight="600">Photo de démo · chargement</text>
+</svg>

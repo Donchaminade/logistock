@@ -94,17 +94,37 @@ export function canonicalPhone(input: string): string {
   return digits;
 }
 
+function groupFromEnd(digits: string): string {
+  const parts: string[] = [];
+  for (let i = digits.length; i > 0; i -= 2) parts.unshift(digits.slice(Math.max(0, i - 2), i));
+  return parts.join(" ");
+}
+
+/** Le plus long indicatif connu en tête, s'il reste au moins 6 chiffres. */
+function splitIntl(digits: string): { code: string; national: string } | undefined {
+  const max = Math.min(3, digits.length - 6);
+  for (let len = max; len >= 1; len--) {
+    const code = digits.slice(0, len);
+    if (CALLING_CODES.has(code)) return { code, national: digits.slice(len) };
+  }
+  return undefined;
+}
+
 /**
- * Affiche le numéro tel qu'il a été donné.
+ * Affiche le numéro avec son indicatif.
  * Les comptes de démo (8 chiffres, sans indicatif) restent présentés en +228.
  */
 export function displayPhone(phone: string): string {
   const trimmed = phone.trim();
-  if (trimmed.startsWith("+")) return trimmed;
   const digits = trimmed.replace(/\D/g, "");
-  if (digits.startsWith("00")) return "+" + digits.slice(2);
+  const intl = trimmed.startsWith("+") ? digits : digits.startsWith("00") ? digits.slice(2) : "";
+  if (intl) {
+    const split = splitIntl(intl);
+    if (!split) return `+${groupFromEnd(intl)}`;
+    return `+${split.code} ${groupFromEnd(split.national)}`;
+  }
   if (digits.length === 8) return `+228 ${formatLocalPhone(digits)}`;
-  return trimmed;
+  return trimmed || phone;
 }
 
 /** Nombre de chiffres utiles, préfixe 00 retiré. */

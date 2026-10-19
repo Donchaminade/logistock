@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronDown, FileCheck2, KeyRound, Lock, Phone, Route, Scale, WifiOff } from "lucide-react";
+import { ArrowRight, ChevronDown, FileCheck2, KeyRound, Lock, Route, Scale, WifiOff } from "lucide-react";
 import { askText, fail, toast } from "@/components/alerts";
 import { useData } from "@/components/DataProvider";
 import { Logo } from "@/components/Logo";
@@ -25,7 +25,7 @@ const ROLE_DESC = {
 export default function LoginPage() {
   const { me, ready, refresh, db } = useData();
   const router = useRouter();
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [more, setMore] = useState(false);
@@ -119,7 +119,7 @@ export default function LoginPage() {
         <div className="animate-in mx-auto w-full max-w-[26rem]">
           <div className="mb-10 lg:hidden"><Logo sub="Préfinancement soja et cacao" /></div>
           <h2 className="text-[26px] font-bold tracking-[-0.025em]">Connexion</h2>
-          <p className="mt-1.5 text-[14.5px] text-muted">Accédez à votre espace avec votre numéro de téléphone.</p>
+          <p className="mt-1.5 text-[14.5px] text-muted">Accédez à votre espace avec votre e-mail ou votre numéro de téléphone.</p>
           {!online && (
             <div className="mt-5 flex gap-3 rounded-2xl bg-ink p-4 text-[13.5px] text-white" data-testid="login-offline">
               <WifiOff className="mt-0.5 size-4 shrink-0" />
@@ -143,15 +143,11 @@ export default function LoginPage() {
             className="mt-7 space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              void doLogin(phone, password, "form");
+              void doLogin(identifier, password, "form");
             }}
           >
-            <Field label="Numéro de téléphone">
-              <div className="relative">
-                <Phone className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-subtle" />
-                <span className="pointer-events-none absolute left-9 top-1/2 -translate-y-1/2 text-[15px] text-muted">+228</span>
-                <Input inputMode="tel" autoComplete="username" placeholder="90 12 34 56" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-[4.6rem]" name="phone" />
-              </div>
+            <Field label="E-mail ou téléphone" hint="Le numéro se saisit avec ou sans indicatif, togolais ou non : +228, +229, +33, 00228…">
+              <Input autoComplete="username" placeholder="nom@exemple.com ou 90 12 34 56" value={identifier} onChange={(e) => setIdentifier(e.target.value)} name="phone" />
             </Field>
             <Field label="Mot de passe">
               <div className="relative">
@@ -172,9 +168,9 @@ export default function LoginPage() {
                 key={a.id}
                 data-testid={`quick-${a.role}`}
                 onClick={() => {
-                  setPhone(a.phone);
+                  setIdentifier(a.email);
                   setPassword(a.password);
-                  void doLogin(a.phone, a.password, a.id);
+                  void doLogin(a.email, a.password, a.id);
                 }}
                 disabled={!!busy}
                 className="group flex w-full items-center gap-3.5 rounded-2xl border border-line bg-white p-3 text-left transition-colors hover:border-brand-600 hover:bg-brand-50/40 disabled:opacity-60"
@@ -186,6 +182,7 @@ export default function LoginPage() {
                     <span className="truncate text-[12.5px] text-subtle">· {a.name}</span>
                   </div>
                   <div className="truncate text-[12.5px] text-muted">{ROLE_DESC[a.role]}</div>
+                  <div className="truncate text-[12px] text-subtle">{a.email}</div>
                 </div>
                 <span className={cx("grid size-8 place-items-center rounded-full bg-canvas text-muted transition-colors group-hover:bg-brand-600 group-hover:text-white")}>
                   {busy === a.id ? <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <ArrowRight className="size-4" />}
@@ -199,15 +196,15 @@ export default function LoginPage() {
           </button>
           {more && (
             <ul className="animate-in mt-3 divide-y divide-line rounded-2xl border border-line bg-white">
-              {[...OTHER_ACCOUNTS, ...created.map((u) => ({ id: u.id, role: u.role, name: u.name, phone: u.phone, password: u.password, title: u.title }))].map((a) => (
+              {[...OTHER_ACCOUNTS, ...created.map((u) => ({ id: u.id, role: u.role, name: u.name, phone: u.phone, email: u.email, password: u.password, title: u.title }))].map((a) => (
                 <li key={a.id}>
-                  <button onClick={() => void doLogin(a.phone, a.password, a.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-canvas">
+                  <button onClick={() => void doLogin(a.email ?? a.phone, a.password, a.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-canvas">
                     <Avatar name={a.name} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13.5px] font-semibold">{a.name}</div>
                       <div className="truncate text-[12px] text-muted">{a.title}</div>
                     </div>
-                    <span className="num text-[12px] text-subtle">{a.phone}</span>
+                    <span className="max-w-[46%] truncate text-right text-[12px] text-subtle">{a.email ?? a.phone}</span>
                   </button>
                 </li>
               ))}

@@ -16,7 +16,10 @@ export interface Entity {
 export interface User extends Entity {
   role: Role;
   name: string;
+  /** Numéro local (« 90 11 22 33 ») ou international (« +33612345678 »). */
   phone: string;
+  /** Identifiant de connexion alternatif. Facultatif pour un compte créé sans e-mail. */
+  email?: string;
   password: string;
   title: string;
   zone?: string;

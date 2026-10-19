@@ -4,6 +4,7 @@ import { commissionDue, currentPrice, debtPaid, metrics, simulateRevision, suppl
 import { uid } from "@/lib/hash";
 import { fcfa, prixKg, tonnes, date as fdate } from "@/lib/format";
 import { GENESIS, sealReceipt, sealRevision, signWriteOff, traceHash } from "@/lib/integrity";
+import { canonicalPhone, isEmail, normEmail, phoneDigitCount, samePhone } from "@/lib/identity";
 import { can, deleteMode, isLocked } from "@/lib/permissions";
 import type {
   Advance, Collection, CommissionRule, Contract, Expense, ExpenseCategory, Id, ManagedRole, PaymentMode,
@@ -24,21 +25,24 @@ const ficheT = (id: Id) => `/transports/fiche/?id=${id}`;
 const ficheP = (id: Id) => `/enlevements/fiche/?id=${id}`;
 
 // ——— Comptes (US-13 et administration) ———
-export async function createSupplier(me: User, input: { name: string; phone: string; zone: string; product: Product }) {
+export async function createSupplier(me: User, input: { name: string; phone: string; email?: string; zone: string; product: Product }) {
   assert(me.role === "patron", "Seul le patron peut créer un compte fournisseur (pas d'auto-inscription).");
   requireOnline("La gestion des comptes");
-  return insertUser(me, { role: "fournisseur", name: input.name, phone: input.phone, zone: input.zone, title: `Fournisseur · ${input.product} · ${input.zone}` });
+  return insertUser(me, { role: "fournisseur", name: input.name, phone: input.phone, email: input.email, zone: input.zone, title: `Fournisseur · ${input.product} · ${input.zone}` });
 }
 
-async function insertUser(me: User, i: { role: Role; name: string; phone: string; zone?: string; title: string }) {
+async function insertUser(me: User, i: { role: Role; name: string; phone: string; email?: string; zone?: string; title: string }) {
   assert(i.name.trim().length > 2, "Le nom est obligatoire.");
-  const digits = i.phone.replace(/\D/g, "");
-  assert(digits.length === 8, "Le numéro doit comporter 8 chiffres (ex. 90 12 34 56).");
+  const count = phoneDigitCount(i.phone);
+  assert(count >= 8 && count <= 15, "Le numéro doit comporter de 8 à 15 chiffres, avec ou sans indicatif (ex. 90 12 34 56, +229 97 00 00 00, +33 6 12 34 56 78).");
+  const email = i.email?.trim() ? normEmail(i.email) : undefined;
+  if (email) assert(isEmail(email), "L'adresse e-mail n'est pas valide.");
   const users = await ds().repos.users.list();
-  assert(!users.some((u) => u.phone.replace(/\D/g, "") === digits), "Ce numéro est déjà utilisé par un autre compte.");
+  assert(!users.some((u) => samePhone(u.phone, i.phone)), "Ce numéro est déjà utilisé par un autre compte.");
+  if (email) assert(!users.some((u) => u.email && normEmail(u.email) === email), "Cet e-mail est déjà utilisé par un autre compte.");
   const temp = `LS-${Math.floor(1000 + Math.random() * 9000)}`;
-  const phone = digits.replace(/(\d{2})(?=\d)/g, "$1 ");
-  const u: User = { id: uid("u"), role: i.role, name: i.name.trim(), phone, password: temp, title: i.title, zone: i.zone, active: true, mustChangePassword: true, failedAttempts: 0, createdAt: now(), createdBy: me.id };
+  const phone = canonicalPhone(i.phone);
+  const u: User = { id: uid("u"), role: i.role, name: i.name.trim(), phone, email, password: temp, title: i.title, zone: i.zone, active: true, mustChangePassword: true, failedAttempts: 0, createdAt: now(), createdBy: me.id };
   await ds().repos.users.create(u);
   await audit(me, `Création de compte ${roleTitle(u).toLowerCase()}`, "users", u.id, `${u.name} (${phone})`, { after: { role: u.role, name: u.name, phone } });
   return { user: u, tempPassword: temp };

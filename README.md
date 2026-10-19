@@ -33,20 +33,20 @@ L'application s'ouvre directement sur l'écran de connexion. Il n'y a pas de pag
 
 ## Comptes de démo
 
-Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place, un par rôle. Vous pouvez aussi saisir le numéro et le mot de passe à la main.
+Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place, un par rôle. Vous pouvez aussi saisir l'e-mail ou le téléphone, et le mot de passe. Le numéro est accepté avec ou sans indicatif, togolais ou non (`90 11 22 33`, `+228 90 11 22 33`, `00228…`, `+229 97 00 00 00`, `+33 6 12 34 56 78`, `06 12 34 56 78`).
 
-| Rôle | Nom | Téléphone (+228) | Mot de passe |
-|---|---|---|---|
-| Patron (financeur) | Komlan Agbéko | 90 11 22 33 | `patron2026` |
-| Gestionnaire délégué (Kaboli) | Yawa Dossou | 91 22 33 44 | `gestion2026` |
-| Fournisseur (cacao, Badou) | Kossi Amegah | 92 33 44 55 | `fourni2026` |
-| Administratrice (comptes, paramètres) | Akouvi Mensah | 90 22 33 44 | `admin2026` |
-| Magasinier (magasin central de Lomé) | Mawuli Tété | 94 11 22 33 | `magasin2026` |
-| Chauffeur (TG-5520-CA) | Yao Gbadoé | 98 12 34 56 | `chauffeur2026` |
-| Comptable (lecture et exports) | Essi Kouma | 90 33 44 55 | `compta2026` |
-| Gestionnaire délégué (Lomé) | Edem Kpodar | 91 55 66 77 | `gestion2026` |
-| Fournisseuse (soja, Atakpamé) | Jamilana Issifou | 92 66 77 88 | `fourni2026` |
-| Fournisseuse (soja, Notsé) | Afi Lawson | 93 44 55 66 | `fourni2026` |
+| Rôle | Nom | E-mail | Téléphone (+228) | Mot de passe |
+|---|---|---|---|---|
+| Patron (financeur) | Komlan Agbéko | `komlan.agbeko@example.com` | 90 11 22 33 | `patron2026` |
+| Gestionnaire délégué (Kaboli) | Yawa Dossou | `yawa.dossou@example.com` | 91 22 33 44 | `gestion2026` |
+| Fournisseur (cacao, Badou) | Kossi Amegah | `kossi.amegah@example.com` | 92 33 44 55 | `fourni2026` |
+| Administratrice (comptes, paramètres) | Akouvi Mensah | `akouvi.mensah@example.com` | 90 22 33 44 | `admin2026` |
+| Magasinier (magasin central de Lomé) | Mawuli Tété | `mawuli.tete@example.com` | 94 11 22 33 | `magasin2026` |
+| Chauffeur (TG-5520-CA) | Yao Gbadoé | `yao.gbadoe@example.com` | 98 12 34 56 | `chauffeur2026` |
+| Comptable (lecture et exports) | Essi Kouma | `essi.kouma@example.com` | 90 33 44 55 | `compta2026` |
+| Gestionnaire délégué (Lomé) | Edem Kpodar | `edem.kpodar@example.com` | 91 55 66 77 | `gestion2026` |
+| Fournisseuse (soja, Atakpamé) | Jamilana Issifou | `jamilana.issifou@example.com` | 92 66 77 88 | `fourni2026` |
+| Fournisseuse (soja, Notsé) | Afi Lawson | `afi.lawson@example.com` | 93 44 55 66 | `fourni2026` |
 
 Les trois derniers comptes se trouvent sous « Autres comptes de démo ». Quand le patron crée un compte fournisseur, ou l'administratrice un compte interne, l'application affiche un mot de passe provisoire `LS-xxxx`. À sa première connexion, l'utilisateur doit le changer.
 
@@ -55,7 +55,7 @@ Les trois derniers comptes se trouvent sous « Autres comptes de démo ». Quand
 - Les rôles mobiles (fournisseur, chauffeur, magasinier, gestionnaire) sont invités à définir un **code PIN** de 4 à 6 chiffres dans **Profil**. Le PIN est rattaché à l'appareil et stocké en SHA-256 salé, jamais en clair.
 - Sur un appareil autorisé, l'écran de connexion propose « Déverrouiller avec mon PIN », y compris **hors ligne**. Cinq PIN erronés retirent l'autorisation de l'appareil.
 
-> La branche `cursor/login-email-phone-b60f` (PR n° 1) ajoute la connexion par e-mail ou par téléphone international. Elle touche l'écran de connexion et la normalisation des numéros. Le présent travail n'y a ajouté que le strict nécessaire : PIN, message de blocage, avis hors ligne et boutons des nouveaux rôles. Les conflits éventuels lors de la fusion se limitent à `src/app/page.tsx`, `src/services/auth.ts` (fonction `login`) et `src/lib/seed.ts` (comptes).
+La connexion accepte l'e-mail ou le téléphone, avec ou sans indicatif et quel que soit le pays, en plus du code PIN, du blocage après plusieurs échecs et de l'avis hors ligne.
 
 **Astuce de présentation :** chaque onglet garde sa propre session. Ouvrez un rôle par onglet, ou une fenêtre côte à côte : les actions d'un rôle apparaissent en direct chez les autres, avec un toast et un badge sur la cloche.
 

@@ -3,6 +3,7 @@ import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import { metrics } from "./calc";
 import { date, dateTime, fcfa, modeLabel, prixKg, productLabel, tonnes } from "./format";
+import { displayPhone } from "./identity";
 import type { Advance, Database } from "./types";
 
 const S = " "; // les polices standard PDF n'ont pas l'espace insécable fine : espace simple
@@ -108,7 +109,7 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   // Grille d'informations
   y = 88;
   const rows: [string, string][] = [
-    ["Fournisseur", `${sup.name} · +228 ${sup.phone}`],
+    ["Fournisseur", `${sup.name} · ${displayPhone(sup.phone)}`],
     ["Contrat", `${c.ref} · ${productLabel[c.product]}`],
     ["Quantité", tonnes(adv.qtyKg, S)],
     ["Prix unitaire", prixKg(adv.unitPrice, S)],

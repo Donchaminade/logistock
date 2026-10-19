@@ -1,12 +1,25 @@
 // Implémentation locale : SEUL fichier de l'application qui touche localStorage / sessionStorage.
 // Synchronisation en direct entre onglets : événement « storage » + BroadcastChannel.
-import { buildSealedSeed } from "@/lib/seed";
+import { buildSealedSeed, DEMO_ACCOUNTS, OTHER_ACCOUNTS } from "@/lib/seed";
 import { uuid } from "@/lib/crypto";
 import type { Collection, Database, Entity, EntityOf, Id } from "@/lib/types";
 import type { ChangeOrigin, DataSource, DeviceStore, Repositories, Repository, SessionStore } from "../contracts";
 import { IndexedDbPhotoStore } from "./photoStore";
 
 const KEY = "logistock:db:v2";
+
+/** Les comptes de démo déjà en localStorage reçoivent leur e-mail sans effacer la démo en cours. */
+function backfillDemoEmails(db: Database): Database {
+  const emails = new Map<string, string>([...DEMO_ACCOUNTS, ...OTHER_ACCOUNTS].map((a) => [a.id, a.email]));
+  let changed = false;
+  const users = db.users.map((u) => {
+    const email = emails.get(u.id);
+    if (!email || u.email) return u;
+    changed = true;
+    return { ...u, email };
+  });
+  return changed ? { ...db, users } : db;
+}
 const DEVICE_KEY = "logistock:device";
 const SESSION_KEY = "logistock:session";
 const CHANNEL = "logistock-sync";
@@ -80,7 +93,10 @@ export class LocalDataSource implements DataSource {
       const db = JSON.parse(raw) as Database;
       // Données d'une version antérieure : collections manquantes ajoutées vides.
       for (const k of COLLECTIONS) if (!Array.isArray(db[k])) (db[k] as unknown[]) = [];
-      return db.settings.length ? db : null;
+      if (!db.settings?.length) return null;
+      const migrated = backfillDemoEmails(db);
+      if (migrated !== db) window.localStorage.setItem(KEY, JSON.stringify(migrated));
+      return migrated;
     } catch {
       return null; // données corrompues : on repart du jeu de démo
     }

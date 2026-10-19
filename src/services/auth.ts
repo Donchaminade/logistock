@@ -1,11 +1,10 @@
 // Connexion (US-01) : mot de passe, blocage après N échecs, code PIN par appareil autorisé (hors ligne compris).
 import { sha256Hex, uuid } from "@/lib/crypto";
 import { dateTime } from "@/lib/format";
+import { bestPhoneMatch, displayPhone, normEmail } from "@/lib/identity";
 import type { Id, User } from "@/lib/types";
 import { assert, audit, ds, notify, now, requireOnline, settings } from "./core";
 import { isOnline } from "./network";
-
-const norm = (s: string) => s.replace(/\D/g, "").replace(/^228/, "");
 /** Rôles invités à définir un PIN dès la première connexion (usage sur téléphone, terrain). */
 export const MOBILE_ROLES = ["fournisseur", "chauffeur", "magasinier", "gestionnaire"] as const;
 
@@ -15,11 +14,15 @@ export class LockedError extends Error {
   }
 }
 
-export async function login(phone: string, password: string): Promise<User> {
+export async function login(identifier: string, password: string): Promise<User> {
   assert(isOnline(), "Hors ligne, la connexion par mot de passe est impossible : déverrouillez avec votre code PIN sur un appareil déjà autorisé.");
-  const users = await ds().repos.users.list();
-  const u = users.find((x) => norm(x.phone) === norm(phone) && !x.deleted);
-  assert(u, "Numéro de téléphone ou mot de passe incorrect.");
+  const users = (await ds().repos.users.list()).filter((x) => !x.deleted);
+  const raw = identifier.trim();
+  const byEmail = raw.includes("@");
+  const u = byEmail
+    ? users.find((x) => x.email && normEmail(x.email) === normEmail(raw))
+    : bestPhoneMatch(users, raw, (x) => x.phone);
+  assert(u, "E-mail, numéro ou mot de passe incorrect.");
   const s = await settings();
   if (u.lockedUntil && u.lockedUntil > now()) {
     const min = Math.ceil((new Date(u.lockedUntil).getTime() - Date.now()) / 60000);
@@ -32,12 +35,12 @@ export async function login(phone: string, password: string): Promise<User> {
       await ds().repos.users.update(u.id, { failedAttempts: failed, lockedUntil: until });
       await audit("system", "Compte bloqué", "users", u.id, `${u.name} · ${failed} échecs consécutifs · bloqué ${s.lockMinutes} min`);
       for (const to of ["admin", "patron"] as const)
-        await notify("system", to, "Compte bloqué", `${u.name} (${u.phone}) : ${failed} échecs de connexion consécutifs. Compte bloqué ${s.lockMinutes} min.`, "/utilisateurs/");
+        await notify("system", to, "Compte bloqué", `${u.name} (${displayPhone(u.phone)}) : ${failed} échecs de connexion consécutifs. Compte bloqué ${s.lockMinutes} min.`, "/utilisateurs/");
       throw new LockedError(until, `Cinq échecs consécutifs : compte bloqué ${s.lockMinutes} minutes. L'administrateur a été alerté.`);
     }
     await ds().repos.users.update(u.id, { failedAttempts: failed, lockedUntil: undefined });
     const left = s.maxFailedLogins - failed;
-    throw new Error(`Numéro de téléphone ou mot de passe incorrect. ${left} essai${left > 1 ? "s" : ""} avant blocage temporaire.`);
+    throw new Error(`E-mail, numéro ou mot de passe incorrect. ${left} essai${left > 1 ? "s" : ""} avant blocage temporaire.`);
   }
   assert(u.active, "Ce compte est désactivé. Contactez l'administrateur ou le patron.");
   await ds().repos.users.update(u.id, { failedAttempts: 0, lockedUntil: undefined });

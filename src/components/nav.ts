@@ -58,7 +58,7 @@ export const SIDEBAR: Record<Role, { group: string; items: NavItem[] }[]> = {
     { group: "Suivi", items: [as(I.actions, "Mes demandes"), as(I.fournisseurs, "Fournisseurs"), I.charges] },
   ],
   fournisseur: [
-    { group: "Mon espace", items: [I.accueil, as(I.contrats, "Mes contrats"), I.declarer, I.releve, as(I.besoins, "Besoins du patron"), as(I.transports, "Mes transports")] },
+    { group: "Mon espace", items: [I.accueil, as(I.contrats, "Mes contrats"), I.declarer, I.releve, as(I.besoins, "Besoins du patron"), as(I.transports, "Mes transports"), as(I.commissions, "Mes commissions")] },
   ],
   magasinier: [
     { group: "Magasin de Lomé", items: [I.accueil, I.reception, I.stocks, as(I.transports, "Arrivages et lots"), I.enlevements, I.carte, as(I.contrats, "Contrats (lecture)")] },
@@ -87,7 +87,7 @@ export const BOTTOM: Record<Role, NavItem[]> = {
 export const ROUTE_ROLES: Record<string, Role[]> = {
   "/besoins": ["patron", "admin", "gestionnaire", "fournisseur", "comptable"],
   "/contrats": ["patron", "admin", "gestionnaire", "fournisseur", "magasinier", "comptable"],
-  "/enlevements": ["patron", "admin", "gestionnaire", "magasinier", "comptable", "chauffeur"],
+  "/enlevements": ["patron", "admin", "gestionnaire", "magasinier", "comptable", "chauffeur", "fournisseur"],
   "/trajets": ["chauffeur"],
   "/frais": ["chauffeur"],
   "/reception": ["patron", "admin", "gestionnaire", "magasinier"],
@@ -96,7 +96,7 @@ export const ROUTE_ROLES: Record<string, Role[]> = {
   "/declarer": ["fournisseur"],
   "/releve": ["fournisseur"],
   "/finances": ["patron", "admin", "comptable"],
-  "/commissions": ["patron", "admin", "comptable"],
+  "/commissions": ["patron", "admin", "comptable", "fournisseur"],
   "/charges": ["patron", "admin", "gestionnaire", "comptable"],
   "/exports": ["patron", "admin", "comptable"],
   "/actions": ["patron", "admin", "gestionnaire", "comptable"],

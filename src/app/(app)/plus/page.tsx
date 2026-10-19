@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/ui";
 export default function Plus() {
   const { me } = useApp();
   const inBottom = new Set(BOTTOM[me.role].map((i) => i.href));
-  const items = [...SIDEBAR[me.role].flatMap((g) => g.items).filter((i) => !inBottom.has(i.href)), { href: "/notifications/", label: "Notifications", icon: Bell }, { href: "/profil/", label: "Profil et démo", icon: User }];
+  const all = [...SIDEBAR[me.role].flatMap((g) => g.items), { href: "/notifications/", label: "Notifications", icon: Bell }, { href: "/profil/", label: "Profil, code PIN et démo", icon: User }];
+  const items = all.filter((i, k) => !inBottom.has(i.href) && all.findIndex((x) => x.href === i.href) === k);
   return (
     <>
       <PageHeader title="Plus" />

@@ -63,3 +63,8 @@ export function fromLocalInput(v: string): string {
 export function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
+
+/** Description lisible d'une règle de commission. */
+export function ruleText(r: { mode: "par_kg" | "pourcentage" | "forfait"; value: number }) {
+  return r.mode === "par_kg" ? `${r.value} FCFA/kg livré` : r.mode === "pourcentage" ? `${(r.value / 100).toLocaleString("fr-FR")} % de la valeur livrée` : `${fcfa(r.value)} par contrat`;
+}

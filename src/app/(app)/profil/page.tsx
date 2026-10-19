@@ -7,6 +7,7 @@ import { useApp } from "@/components/DataProvider";
 import { Avatar, Button, Card, KV, PageHeader } from "@/components/ui";
 import { date, roleLabel } from "@/lib/format";
 import { changePassword, logout } from "@/services/actions";
+import { PinCard } from "@/components/PinCard";
 
 export default function Profil() {
   const { me, run } = useApp();
@@ -34,6 +35,7 @@ export default function Profil() {
           if (await confirm({ title: "Se déconnecter ?", confirmText: "Déconnexion", dark: true })) { logout(); router.replace("/"); }
         }}>Déconnexion</Button>
       </div>
+      <PinCard />
       <Card className="mt-4 animate-in">
         <div className="flex gap-3">
           <MonitorSmartphone className="mt-0.5 size-5 shrink-0 text-brand-700" />

@@ -16,13 +16,14 @@ export default function Transports() {
   const [open, setOpen] = useState(false);
   const [st, setSt] = useState<"cours" | "all">("cours");
   const mine = new Set(contractsOf(db, me).map((c) => c.id));
+  const myDrivers = db.drivers.filter((d) => d.userId === me.id).map((d) => d.id);
   const rows = db.transports
-    .filter((t) => !t.deleted && mine.has(t.contractId) && (st === "all" || t.status !== "receptionne"))
+    .filter((t) => !t.deleted && mine.has(t.contractId) && (me.role !== "chauffeur" || (!!t.driverId && myDrivers.includes(t.driverId))) && (st === "all" || t.status !== "receptionne"))
     .sort((a, b) => b.loadingDate.localeCompare(a.loadingDate));
   return (
     <>
       <PageHeader title="Transports et lots" sub="Chaque transport est un lot tracé : origine variable, étapes horodatées, réceptionnaires, pointage à Lomé."
-        actions={me.role !== "fournisseur" && can(db.settings[0]!.perms, me, "transports", "c") && <Button icon={<Plus className="size-4" />} onClick={() => setOpen(true)} data-testid="new-transport">Nouveau transport</Button>} />
+        actions={!["fournisseur", "chauffeur", "magasinier", "comptable"].includes(me.role) && can(db.settings[0]!.perms, me, "transports", "c") && <Button icon={<Plus className="size-4" />} onClick={() => setOpen(true)} data-testid="new-transport">Nouveau transport</Button>} />
       <div className="mb-4"><Segmented value={st} onChange={setSt} options={[{ value: "cours", label: "En cours" }, { value: "all", label: "Tous" }]} /></div>
       <DataTable rows={rows} rowKey={(t) => t.id} onRow={(t) => router.push(`/transports/fiche/?id=${t.id}`)}
         empty={<Empty icon={<Truck className="size-5" />} title="Aucun transport en cours" text="Les transports réceptionnés sont visibles dans « Tous »." />}

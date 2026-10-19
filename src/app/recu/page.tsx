@@ -58,7 +58,11 @@ function Recu() {
               <div className="border-t border-line-2 pt-2">Signature du patron</div>
             </div>
           </div>
-          <p className="mt-8 font-mono text-[11px] text-subtle">Empreinte du reçu : {a.receiptHash}</p>
+          <div className="mt-8 space-y-1 rounded-xl bg-canvas p-4 font-mono text-[11px] text-subtle break-all">
+            <div><span className="font-sans font-semibold">SHA-256 :</span> {a.receiptHash}</div>
+            <div><span className="font-sans font-semibold">Signature Ed25519 :</span> {a.receiptSignature}</div>
+            <div className="font-sans">Vérifiable sans connexion : <a className="font-semibold text-brand-700 underline" href={`/verifier/?no=${a.receiptNo}&h=${a.receiptHash.slice(0, 16)}`}>/verifier</a> · clé de démonstration, signature côté serveur en production.</div>
+          </div>
         </div>
       </article>
     </div>

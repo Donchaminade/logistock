@@ -1,10 +1,15 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, ArrowRight, Banknote, Camera, ClipboardCheck, FileText, Handshake, PackagePlus, Route, Scale, Truck, Wallet, Warehouse,
+  AlertTriangle, ArrowRight, BadgePercent, Banknote, CalendarClock, Camera, ClipboardCheck, CloudOff, FileText, Handshake, Hourglass, KeyRound, Lock,
+  PackageCheck, PackagePlus, Receipt, Route, Scale, Settings, TrendingUp, Truck, UserCog, Wallet, Warehouse,
 } from "lucide-react";
+import { TripList } from "@/components/driver";
+import { computeAlerts } from "@/lib/alerts";
+import { AGE_LABEL, debtAge, margin } from "@/lib/calc";
+import { hasPin, MOBILE_ROLES } from "@/services/actions";
 import { useApp } from "@/components/DataProvider";
 import { ContractBadges, contractsOf, nameOf, PartialModal, TransportModal } from "@/components/domain";
 import { Badge, Button, Card, CardTitle, DataTable, Empty, LinkButton, PageHeader, Progress, Segmented, Select, Stat } from "@/components/ui";
@@ -14,9 +19,14 @@ import type { Contract, Database, User } from "@/lib/types";
 
 export default function Accueil() {
   const { me } = useApp();
-  if (me.role === "fournisseur") return <SupplierHome />;
-  if (me.role === "gestionnaire") return <ManagerHome />;
-  return <PatronHome />;
+  const home =
+    me.role === "fournisseur" ? <SupplierHome /> :
+    me.role === "gestionnaire" ? <ManagerHome /> :
+    me.role === "chauffeur" ? <DriverHome /> :
+    me.role === "magasinier" ? <StorekeeperHome /> :
+    me.role === "admin" ? <AdminHome /> :
+    <PatronHome />;
+  return <><PinBanner />{home}</>;
 }
 
 function hello(name: string) {
@@ -24,24 +34,10 @@ function hello(name: string) {
   return `${h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"}, ${name.split(" ")[0]}`;
 }
 
+const ALERT_ICON = { actions: ClipboardCheck, partielle: Scale, photo: Camera, echu: AlertTriangle, echeance: CalendarClock, stock: Warehouse, pesee: Scale, inactif: Hourglass, sync: CloudOff, dette: Wallet, frais: Receipt, compte: Lock, commission: BadgePercent, arrivee: Truck } as const;
+
 function Alerts({ db, me }: { db: Database; me: User }) {
-  const items: { icon: React.ReactNode; title: string; text: string; href: string }[] = [];
-  const pending = db.pending.filter((p) => p.status === "en_attente");
-  if (me.role === "patron" && pending.length) items.push({ icon: <ClipboardCheck className="size-4" />, title: `${pending.length} action${pending.length > 1 ? "s" : ""} à confirmer`, text: pending[0]!.label, href: "/actions/" });
-  for (const p of db.partials.filter((x) => !x.deleted && !x.seenByPatron)) {
-    const c = db.contracts.find((k) => k.id === p.contractId)!;
-    items.push({ icon: <Scale className="size-4" />, title: `Livraison partielle · ${c.ref}`, text: `${tonnes(p.foundKg)} sur ${tonnes(p.contractedKg)} — reliquat ${tonnes(p.remainderKg)}`, href: `/contrats/fiche/?id=${c.id}` });
-  }
-  for (const a of db.advances.filter((x) => x.status === "a_completer" && !x.deleted)) {
-    const c = db.contracts.find((k) => k.id === a.contractId)!;
-    items.push({ icon: <Camera className="size-4" />, title: `Photo de remise manquante · ${a.receiptNo}`, text: `${fcfa(a.amount)} · ${c.ref}`, href: `/contrats/fiche/?id=${c.id}` });
-  }
-  for (const c of db.contracts.filter((x) => x.status === "actif" && !x.deleted && new Date(x.deliveryDate) < new Date())) {
-    const m = metrics(db, c);
-    if (m.S > 0) items.push({ icon: <AlertTriangle className="size-4" />, title: `Contrat échu non soldé · ${c.ref}`, text: `${nameOf(db, c.supplierId)} · solde ${fcfa(m.S)}`, href: `/contrats/fiche/?id=${c.id}` });
-  }
-  const arrived = db.transports.filter((t) => t.status === "arrive" && !t.deleted);
-  for (const t of arrived) items.push({ icon: <Truck className="size-4" />, title: `${t.ref} pointé à Lomé`, text: "En attente de pesée et de réception", href: `/transports/fiche/?id=${t.id}` });
+  const items = computeAlerts(db, me);
   return (
     <Card>
       <CardTitle title="À traiter" sub={items.length ? `${items.length} point${items.length > 1 ? "s" : ""} d'attention` : "Rien en attente"} icon={<AlertTriangle className="size-[18px]" />} />
@@ -49,21 +45,43 @@ function Alerts({ db, me }: { db: Database; me: User }) {
         <p className="rounded-xl bg-canvas px-4 py-6 text-center text-[13.5px] text-muted">Tout est à jour.</p>
       ) : (
         <ul className="-mx-2 space-y-0.5" data-testid="alerts">
-          {items.slice(0, 6).map((i) => (
-            <li key={i.title + i.text}>
-              <Link href={i.href} className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-canvas">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink text-white">{i.icon}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-semibold">{i.title}</span>
-                  <span className="num block truncate text-[12.5px] text-muted">{i.text}</span>
-                </span>
-                <ArrowRight className="size-4 shrink-0 text-subtle" />
-              </Link>
-            </li>
-          ))}
+          {items.slice(0, 8).map((i) => {
+            const Icon = ALERT_ICON[i.kind];
+            return (
+              <li key={i.title + i.text}>
+                <Link href={i.href} className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-canvas">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink text-white"><Icon className="size-4" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold">{i.title}</span>
+                    <span className="num block truncate text-[12.5px] text-muted">{i.text}</span>
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 text-subtle" />
+                </Link>
+              </li>
+            );
+          })}
+          {items.length > 8 && <li className="px-2 pt-1 text-[12.5px] text-muted">… et {items.length - 8} autre(s)</li>}
         </ul>
       )}
     </Card>
+  );
+}
+
+/** Invite à activer le code PIN sur les rôles mobiles (US-01). */
+function PinBanner() {
+  const { me } = useApp();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if ((MOBILE_ROLES as readonly string[]).includes(me.role)) void hasPin(me).then((h) => setShow(!h));
+  }, [me]);
+  if (!show) return null;
+  return (
+    <div className="animate-in mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-4" data-testid="pin-banner">
+      <span className="grid size-9 place-items-center rounded-xl bg-brand-50 text-brand-700"><KeyRound className="size-[18px]" /></span>
+      <div className="min-w-0 flex-1 text-[13.5px]"><div className="font-semibold">Activez le déverrouillage par code PIN</div><div className="text-muted">Sur cet appareil, y compris sans réseau, sans retaper votre mot de passe.</div></div>
+      <LinkButton size="sm" href="/profil/" variant="primary">Définir mon PIN</LinkButton>
+      <button onClick={() => setShow(false)} className="text-[12.5px] font-semibold text-muted hover:text-ink">Plus tard</button>
+    </div>
   );
 }
 
@@ -93,17 +111,25 @@ function PatronHome() {
   const { db, me } = useApp();
   const [product, setProduct] = useState<"all" | "soja" | "cacao">("all");
   const [supplier, setSupplier] = useState("all");
+  const [period, setPeriod] = useState<"all" | "30" | "90">("all");
   const contracts = db.contracts.filter((c) => !c.deleted && (product === "all" || c.product === product) && (supplier === "all" || c.supplierId === supplier));
   const k = useMemo(() => {
     const ms = contracts.map((c) => metrics(db, c));
     const ids = new Set(contracts.map((c) => c.id));
+    const from = period === "all" ? 0 : Date.now() - Number(period) * 864e5;
+    const inP = (iso?: string) => !!iso && new Date(iso).getTime() >= from;
     const sum = (f: (m: ReturnType<typeof metrics>) => number) => ms.reduce((s, m) => s + f(m), 0);
-    const charges = db.expenses.filter((e) => !e.deleted && e.debitedOn === "charges_patron" && (!e.contractId || ids.has(e.contractId))).reduce((s, e) => s + e.amount, 0);
-    const debts = db.debts.filter((d) => !d.deleted && ids.has(d.contractId)).reduce((s, d) => s + debtRemaining(db, d.id), 0);
+    const charges = db.expenses.filter((e) => !e.deleted && e.debitedOn === "charges_patron" && e.status !== "a_valider" && e.status !== "refusee" && inP(e.date) && (!e.contractId || ids.has(e.contractId))).reduce((s, e) => s + e.amount, 0);
+    const openDebts = db.debts.filter((d) => !d.deleted && ids.has(d.contractId) && !["soldee", "passee_en_perte"].includes(d.status));
+    const debts = openDebts.reduce((s, d) => s + debtRemaining(db, d.id), 0);
+    const ages = (Object.keys(AGE_LABEL) as (keyof typeof AGE_LABEL)[]).map((b) => ({ b, v: openDebts.filter((d) => debtAge(d).bucket === b).reduce((s, d) => s + debtRemaining(db, d.id), 0) }));
     const suppliers = db.users.filter((u) => u.role === "fournisseur" && (supplier === "all" || u.id === supplier));
     const stock = suppliers.reduce((s, u) => s + supplierStock(db, u.id).available, 0);
-    return { A: sum((m) => m.A), V: sum((m) => m.V), kg: sum((m) => m.deliveredKg), S: sum((m) => Math.max(0, m.S)), Q: sum((m) => m.Q), charges, debts, stock };
-  }, [db, contracts, supplier]);
+    const adv = db.advances.filter((a) => !a.deleted && a.status !== "annulee" && ids.has(a.contractId) && inP(a.date));
+    const dl = db.deliveries.filter((d) => !d.deleted && d.status !== "pesee" && ids.has(d.contractId) && inP(d.receivedAt));
+    const mg = margin(db, (c) => ids.has(c.id));
+    return { A: adv.reduce((s, a) => s + a.amount, 0), V: dl.reduce((s, d) => s + d.value, 0), kg: dl.reduce((s, d) => s + d.netKg, 0), S: sum((m) => Math.max(0, m.S)), Q: sum((m) => m.Q), charges, debts, ages, stock, mg };
+  }, [db, contracts, supplier, period]);
   const enRoute = db.transports.filter((t) => !t.deleted && t.status !== "receptionne");
   const suppliers = db.users.filter((u) => u.role === "fournisseur" && !u.deleted);
   return (
@@ -111,10 +137,11 @@ function PatronHome() {
       <PageHeader
         eyebrow={new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lome" }).format(new Date())}
         title={hello(me.name)}
-        sub="Situation consolidée de vos préfinancements, recalculée à partir des écritures."
-        actions={<><LinkButton href="/besoins/" icon={<Handshake className="size-4" />}>Exprimer un besoin</LinkButton><LinkButton href="/contrats/" variant="primary" icon={<FileText className="size-4" />}>Contrats</LinkButton></>}
+        sub={me.role === "comptable" ? "Consultation et exports : paiements, soldes, dettes et commissions. Aucune modification possible." : "Situation consolidée de vos préfinancements, recalculée à partir des écritures."}
+        actions={me.role === "comptable" ? <><LinkButton href="/finances/" icon={<Wallet className="size-4" />}>Soldes et dettes</LinkButton><LinkButton href="/exports/" variant="primary" icon={<FileText className="size-4" />}>Exports</LinkButton></> : <><LinkButton href="/besoins/" icon={<Handshake className="size-4" />}>Exprimer un besoin</LinkButton><LinkButton href="/contrats/" variant="primary" icon={<FileText className="size-4" />}>Contrats</LinkButton></>}
       />
       <div className="animate-in mb-5 flex flex-wrap items-center gap-2">
+        <Segmented value={period} onChange={setPeriod} options={[{ value: "30", label: "30 jours" }, { value: "90", label: "90 jours" }, { value: "all", label: "Depuis le début" }]} />
         <Segmented value={product} onChange={setProduct} options={[{ value: "all", label: "Tous produits" }, { value: "soja", label: "Soja" }, { value: "cacao", label: "Cacao" }]} />
         <Select value={supplier} onChange={(e) => setSupplier(e.target.value)} className="!h-10 w-auto min-w-[12rem] !py-0 text-[13.5px]" aria-label="Filtrer par fournisseur">
           <option value="all">Tous les fournisseurs</option>
@@ -122,7 +149,7 @@ function PatronHome() {
         </Select>
       </div>
       <div className="animate-in grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="kpis">
-        <Stat accent label="Total avancé" value={fcfa(k.A)} hint={`${contracts.length} contrat${contracts.length > 1 ? "s" : ""}`} icon={<Banknote className="size-4" />} />
+        <Stat accent label="Total avancé" value={fcfa(k.A)} hint={`${contracts.length} contrat${contracts.length > 1 ? "s" : ""}${period === "all" ? "" : ` · ${period} derniers jours`}`} icon={<Banknote className="size-4" />} />
         <Stat label="Total livré" value={fcfa(k.V)} hint={tonnes(k.kg)} icon={<Truck className="size-4" />} />
         <Stat label="Soldes ouverts" value={fcfa(k.S)} hint={`Reste à livrer ${tonnes(k.Q)}`} icon={<Scale className="size-4" />} />
         <Stat label="Stock disponible" value={tonnes(k.stock)} hint="Déclaré, non enlevé" icon={<Warehouse className="size-4" />} />
@@ -130,6 +157,19 @@ function PatronHome() {
         <Stat label="Dettes en cours" value={fcfa(k.debts)} hint={k.debts ? "À recouvrer" : "Aucune dette"} icon={<AlertTriangle className="size-4" />} />
         <Stat label="Transports en cours" value={String(enRoute.length)} hint={enRoute.map((t) => t.ref).join(", ") || "—"} icon={<Route className="size-4" />} />
         <Stat label="Actions à confirmer" value={String(db.pending.filter((p) => p.status === "en_attente").length)} hint="Demandes des gestionnaires" icon={<ClipboardCheck className="size-4" />} />
+      </div>
+      <div className="animate-in mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1.4fr]">
+        <Card className="!p-4" >
+          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-subtle"><TrendingUp className="size-4" /> Marge estimée (§1.7)</div>
+          <div className="num mt-1 text-[22px] font-bold" data-testid="kpi-margin">{fcfa(k.mg.margin)}</div>
+          <div className="num mt-1 text-[12.5px] text-muted">Revente {fcfa(k.mg.revenue)} − livré {fcfa(k.mg.cost)} − transport {fcfa(k.mg.transport)} − commissions {fcfa(k.mg.commissions)}</div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[12px] font-semibold uppercase tracking-[0.06em] text-subtle">Dettes par ancienneté</div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {k.ages.map((a) => <div key={a.b}><div className="text-[11.5px] text-muted">{AGE_LABEL[a.b]}</div><div className="num text-[14px] font-semibold">{fcfa(a.v)}</div></div>)}
+          </div>
+        </Card>
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="min-w-0 space-y-3">
@@ -278,6 +318,68 @@ function SupplierHome() {
         </ul>
       )}
       {partial && <PartialModal open onClose={() => setPartial(null)} contract={partial} />}
+    </>
+  );
+}
+
+function DriverHome() {
+  const { me } = useApp();
+  return (
+    <>
+      <div className="animate-in mb-5"><div className="eyebrow">Chauffeur</div><h1 className="mt-1 text-[24px] font-bold tracking-[-0.025em]">{hello(me.name)}</h1><p className="mt-1 text-[14px] text-muted">Vos ordres d&apos;enlèvement et la prochaine action à faire. Fonctionne sans réseau.</p></div>
+      <TripList />
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
+        <LinkButton href="/frais/" icon={<Receipt className="size-4" />}>Déclarer des frais</LinkButton>
+        <LinkButton href="/trajets/" icon={<Route className="size-4" />}>Tous mes trajets</LinkButton>
+      </div>
+    </>
+  );
+}
+
+function StorekeeperHome() {
+  const { db, me } = useApp();
+  const ts = db.transports.filter((t) => !t.deleted);
+  const pesees = db.deliveries.filter((d) => d.status === "pesee" && !d.deleted).length;
+  const received = db.deliveries.filter((d) => d.status === "receptionnee" && !d.deleted);
+  return (
+    <>
+      <PageHeader eyebrow="Magasinier · Lomé" title={hello(me.name)} sub="Pointage des camions, pesées et réception des livraisons." actions={<LinkButton href="/reception/" variant="primary" icon={<PackageCheck className="size-4" />}>Réception et pesées</LinkButton>} />
+      <div className="animate-in grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat accent label="Camions attendus" value={String(ts.filter((t) => t.status === "en_route").length)} icon={<Truck className="size-4" />} />
+        <Stat label="À peser" value={String(ts.filter((t) => t.status === "arrive" && !db.deliveries.some((d) => d.transportId === t.id)).length)} icon={<Scale className="size-4" />} />
+        <Stat label="À réceptionner" value={String(pesees)} icon={<PackageCheck className="size-4" />} />
+        <Stat label="Reçu au magasin" value={tonnes(received.reduce((s, d) => s + d.netKg, 0))} icon={<Warehouse className="size-4" />} />
+      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2"><Alerts db={db} me={me} /></div>
+    </>
+  );
+}
+
+function AdminHome() {
+  const { db, me } = useApp();
+  const users = db.users.filter((u) => !u.deleted);
+  const locked = users.filter((u) => u.lockedUntil && u.lockedUntil > new Date().toISOString());
+  return (
+    <>
+      <PageHeader eyebrow="Administration" title={hello(me.name)} sub="Comptes, paramètres, référentiels et journal ; vous assistez le patron." actions={<><LinkButton href="/parametres/" icon={<Settings className="size-4" />}>Paramètres</LinkButton><LinkButton href="/utilisateurs/" variant="primary" icon={<UserCog className="size-4" />}>Utilisateurs</LinkButton></>} />
+      <div className="animate-in grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat accent label="Comptes actifs" value={String(users.filter((u) => u.active).length)} hint={`${users.length} au total`} icon={<UserCog className="size-4" />} />
+        <Stat label="Comptes bloqués" value={String(locked.length)} icon={<Lock className="size-4" />} />
+        <Stat label="Appareils autorisés" value={String(db.devices.filter((d) => !d.deleted).length)} icon={<KeyRound className="size-4" />} />
+        <Stat label="Opérations hors ligne en attente" value={String(db.outbox.filter((o) => o.status === "en_attente").length)} icon={<CloudOff className="size-4" />} />
+      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Alerts db={db} me={me} />
+        <Card>
+          <CardTitle title="Dernières opérations" sub="Journal d'audit chaîné" />
+          <ul className="space-y-3">
+            {[...db.audit].reverse().slice(0, 7).map((a) => (
+              <li key={a.id} className="text-[13px]"><span className="font-semibold">{a.action}</span> <span className="text-muted">· {nameOf(db, a.by) === "—" ? "Système" : nameOf(db, a.by)} · {relative(a.at)}</span></li>
+            ))}
+          </ul>
+          <LinkButton href="/journal/" size="sm" className="mt-4">Ouvrir le journal</LinkButton>
+        </Card>
+      </div>
     </>
   );
 }

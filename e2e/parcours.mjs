@@ -86,11 +86,11 @@ const download = await dl;
 await download.saveAs(`${SHOTS}/recu-remise.pdf`);
 ok("Reçu PDF généré et téléchargé", fs.statSync(`${SHOTS}/recu-remise.pdf`).size > 20000, download.suggestedFilename());
 const newContractUrl = A.url();
-const afiNotif = await A.evaluate(() => JSON.parse(localStorage.getItem("logistock:db:v1")).notifications.some((n) => n.to === "u-afi" || (n.to ?? []).includes?.("u-afi")));
+const afiNotif = await A.evaluate(() => JSON.parse(localStorage.getItem("logistock:db:v2")).notifications.some((n) => n.to === "u-afi" || (n.to ?? []).includes?.("u-afi")));
 ok("Le fournisseur Afi est notifié (notification enregistrée)", afiNotif);
 
 // Page de reçu imprimable
-const advHref = await A.evaluate(() => { const db = JSON.parse(localStorage.getItem("logistock:db:v1")); return db.advances[db.advances.length - 1].id; });
+const advHref = await A.evaluate(() => { const db = JSON.parse(localStorage.getItem("logistock:db:v2")); return db.advances[db.advances.length - 1].id; });
 const R = A;
 await R.setViewportSize({ width: 1000, height: 1300 });
 await R.goto(`${BASE}/recu/?id=${advHref}`);
@@ -283,7 +283,7 @@ await A.goto(BASE + "/profil/");
 await A.getByTestId("reset-demo").click();
 await confirmSwal(A);
 await A.waitForTimeout(600);
-const after = await A.evaluate(() => JSON.parse(localStorage.getItem("logistock:db:v1")).contracts.length);
+const after = await A.evaluate(() => JSON.parse(localStorage.getItem("logistock:db:v2")).contracts.length);
 ok("Réinitialiser la démo : retour aux 3 contrats fictifs", after === 3, String(after));
 
 ok("Aucune requête externe (polices, icônes, CSS, scripts locaux)", external.size === 0, [...external].join(", "));

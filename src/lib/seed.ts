@@ -66,6 +66,9 @@ export function buildSeed(): Database {
       { id: "ev-41-3", transportId: "tr-041", order: 3, type: "livraison_lieu_prevu", place: "Kaboli", at: d("2026-10-15T16:10:00Z"), qtyKg: 80000, receiver: "Yawa Dossou", receiverRole: "Gestionnaire déléguée (sur place)", vehicle: "TG-5520-CA", driver: "Yao Gbadoé", by: "u-yawa" },
       { id: "ev-41-4", transportId: "tr-041", order: 4, type: "etape", place: "Atakpamé", at: d("2026-10-17T11:40:00Z"), qtyKg: 80000, receiver: "Yao Gbadoé", receiverRole: "Chauffeur", vehicle: "TG-5520-CA", driver: "Yao Gbadoé", by: "u-yao" },
     ]),
+    ...chain([
+      { id: "ev-40-1", transportId: "tr-040", order: 1, type: "chargement", place: "Badou", at: d("2026-10-14T08:30:00Z"), qtyKg: 12000, receiver: "Komi Tchalla", receiverRole: "Chauffeur", vehicle: "TG-7781-BC", driver: "Komi Tchalla", carrier: "Transports Agou (fictif)", comment: "Saisie en double, suppression à demander", by: "u-yawa" },
+    ]),
   ];
 
   return {
@@ -143,7 +146,7 @@ export function buildSeed(): Database {
       { id: "tr-028", ref: "TR-2026-028", contractId: "ct-009", product: "soja", origin: "Glazoué (Bénin)", tonsKg: 30000, vehicle: "TG-4417-BQ", driver: "Séna Akakpo", driverPhone: "97 10 20 30", driverId: "dr-sena", carrier: "Transports Zio (fictif)", loadingDate: d("2026-09-24T07:30:00Z"), departureDate: d("2026-09-24T09:00:00Z"), arrivalDate: d("2026-09-26T09:05:00Z"), status: "receptionne", createdBy: "u-edem", createdAt: d("2026-09-24T07:00:00Z") },
       { id: "tr-031", ref: "TR-2026-031", contractId: "ct-014", product: "soja", origin: "Sotouboua", tonsKg: 20000, vehicle: "TG-2093-AZ", driver: "Kodjo Ahiadzi", driverPhone: "97 40 50 60", driverId: "dr-kodjo", carrier: "Transports Zio (fictif)", loadingDate: d("2026-09-10T06:45:00Z"), departureDate: d("2026-09-10T08:00:00Z"), arrivalDate: d("2026-09-12T08:15:00Z"), status: "receptionne", createdBy: "u-yawa", createdAt: d("2026-09-10T06:30:00Z") },
       { id: "tr-036", ref: "TR-2026-036", contractId: "ct-014", product: "soja", origin: "Anié", tonsKg: 15400, vehicle: "TG-7781-BC", driver: "Komi Tchalla", driverPhone: "97 70 80 90", driverId: "dr-komi", carrier: "Transports Zio (fictif)", loadingDate: d("2026-10-01T07:00:00Z"), departureDate: d("2026-10-01T08:30:00Z"), arrivalDate: d("2026-10-03T08:00:00Z"), status: "receptionne", createdBy: "u-yawa", createdAt: d("2026-10-01T06:50:00Z") },
-      { id: "tr-040", ref: "TR-2026-040", contractId: "ct-017", product: "cacao", origin: "Badou", tonsKg: 80000, vehicle: "TG-5520-CA", driver: "Yao Gbadoé", carrier: "Transports Agou (fictif)", loadingDate: d("2026-10-14T08:30:00Z"), departureDate: d("2026-10-14T10:00:00Z"), status: "en_route", createdBy: "u-yawa", createdAt: d("2026-10-14T08:40:00Z") },
+      { id: "tr-040", ref: "TR-2026-040", contractId: "ct-017", product: "cacao", origin: "Badou", tonsKg: 12000, vehicle: "TG-7781-BC", driver: "Komi Tchalla", driverPhone: "97 70 80 90", driverId: "dr-komi", carrier: "Transports Agou (fictif)", loadingDate: d("2026-10-14T08:30:00Z"), departureDate: d("2026-10-14T10:00:00Z"), status: "en_route", createdBy: "u-yawa", createdAt: d("2026-10-14T08:40:00Z") },
       { id: "tr-041", ref: "TR-2026-041", contractId: "ct-017", product: "cacao", origin: "Badou", tonsKg: 80000, vehicle: "TG-5520-CA", driver: "Yao Gbadoé", driverPhone: "98 12 34 56", carrier: "Transports Agou (fictif)", loadingDate: d("2026-10-14T08:30:00Z"), departureDate: d("2026-10-14T10:00:00Z"), status: "en_route", pickupId: "pk-006", driverId: "dr-yao", createdBy: "u-yawa", createdAt: d("2026-10-14T08:35:00Z") },
     ],
     traces,

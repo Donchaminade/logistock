@@ -28,7 +28,7 @@ export default function Besoins() {
         eyebrow="Étape 0"
         title={me.role === "fournisseur" ? "Besoins du patron" : "Besoins et propositions"}
         sub={me.role === "fournisseur" ? "Proposez-vous pour aller chercher le produit : quantité, prix, délai et avance demandée." : "Le patron exprime un besoin, les fournisseurs se proposent, le patron valide : le contrat est alors créé."}
-        actions={me.role === "patron" && <Button icon={<Plus className="size-4" />} onClick={() => setNeedOpen(true)} data-testid="new-need">Exprimer un besoin</Button>}
+        actions={(me.role === "patron" || me.role === "admin") && <Button icon={<Plus className="size-4" />} onClick={() => setNeedOpen(true)} data-testid="new-need">Exprimer un besoin</Button>}
       />
       {sorted.length === 0 ? (
         <Empty icon={<Handshake className="size-5" />} title="Aucun besoin ouvert" text="Les nouveaux besoins du patron apparaîtront ici." />
@@ -38,7 +38,7 @@ export default function Besoins() {
             const offers = db.offers.filter((o) => o.needId === n.id && !o.deleted && (me.role !== "fournisseur" || o.supplierId === me.id));
             const acceptedKg = db.offers.filter((o) => o.needId === n.id && o.status === "acceptee").reduce((s, o) => s + (db.contracts.find((c) => c.id === o.contractId)?.qtyKg ?? o.qtyKg), 0);
             const cov = Math.min(100, Math.round((acceptedKg / n.qtyKg) * 100));
-            const canPropose = me.role !== "gestionnaire" && (n.status === "ouvert" || n.status === "partiellement_couvert");
+            const canPropose = ["patron", "admin", "fournisseur"].includes(me.role) && (n.status === "ouvert" || n.status === "partiellement_couvert");
             return (
               <Card key={n.id} pad={false} className="animate-in overflow-hidden">
                 <div className="p-5 sm:p-6">

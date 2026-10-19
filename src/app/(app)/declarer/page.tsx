@@ -10,6 +10,7 @@ import { Badge, Button, Card, Empty, Field, Input, PageHeader, PhotoInput, Selec
 import { fcfa, group, productLabel, tonnes } from "@/lib/format";
 import type { Contract, PaymentMode } from "@/lib/types";
 import { declarePurchase } from "@/services/actions";
+import { isOnline } from "@/services/network";
 
 export default function Page() {
   return <Suspense fallback={null}><Declarer /></Suspense>;
@@ -93,7 +94,7 @@ function PurchaseForm({ contracts }: { contracts: Contract[] }) {
         try {
           await declarePurchase(me, { contractId: f.contractId, date: new Date(f.date).toISOString(), place: f.place, producer: f.producer || undefined, qtyKg, pricePaid: Number(f.price), mode: f.mode, photo: f.photo });
           setF(empty);
-          await success("Achat déclaré", `${tonnes(qtyKg)} ajoutées à votre stock disponible. Votre solde ne change pas : seule une livraison réceptionnée le réduit.`);
+          await success("Achat déclaré", `${tonnes(qtyKg)} ajoutées à votre stock disponible. Votre solde ne change pas : seule une livraison réceptionnée le réduit.${isOnline() ? "" : "<br/>Hors ligne : enregistré sur l'appareil, <b>en attente de synchronisation</b> (le patron sera notifié à l'envoi)."}`);
         } catch (e) { await fail(e); } finally { setBusy(false); }
       }}>Déclarer l&apos;achat</Button>
     </Card>

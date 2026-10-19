@@ -15,11 +15,11 @@ const LINK: Partial<Record<string, string>> = { contrats: "/contrats/fiche/?id="
 export default function Actions() {
   const { db, me, run } = useApp();
   const [tab, setTab] = useState<"attente" | "traitees">("attente");
-  const all = db.pending.filter((p) => me.role === "patron" || p.by === me.id).sort((a, b) => b.at.localeCompare(a.at));
+  const all = db.pending.filter((p) => ["patron", "admin", "comptable"].includes(me.role) || p.by === me.id).sort((a, b) => b.at.localeCompare(a.at));
   const rows = all.filter((p) => (tab === "attente" ? p.status === "en_attente" : p.status !== "en_attente"));
   return (
     <>
-      <PageHeader title={me.role === "patron" ? "Actions à confirmer" : "Mes demandes"}
+      <PageHeader title={["patron", "admin", "comptable"].includes(me.role) ? "Actions à confirmer" : "Mes demandes"}
         sub={me.role === "patron" ? "Les gestionnaires délégués créent sans supprimer : leurs suppressions et changements sensibles n'ont d'effet qu'après votre validation." : "Vos demandes de suppression et de modification sensible, en attente de la décision du patron."} />
       <Tabs value={tab} onChange={setTab} tabs={[{ value: "attente", label: "En attente", count: all.filter((p) => p.status === "en_attente").length }, { value: "traitees", label: "Traitées", count: all.filter((p) => p.status !== "en_attente").length }]} />
       {rows.length === 0 ? (

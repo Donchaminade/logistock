@@ -1,5 +1,5 @@
 "use client";
-import { AlertTriangle, Flag, MapPin, PackageCheck, Scale, ShoppingBasket, Truck, Warehouse } from "lucide-react";
+import { AlertTriangle, Camera, Flag, MapPin, PackageCheck, Scale, ShoppingBasket, Truck, Warehouse } from "lucide-react";
 import { traceGaps } from "@/lib/calc";
 import { dateTime, tonnes } from "@/lib/format";
 import type { TraceEvent, TraceType } from "@/lib/types";
@@ -7,7 +7,7 @@ import { TRACE_LABEL } from "@/services/actions";
 import { Badge, Photo, cx } from "./ui";
 
 const ICON: Record<TraceType, typeof Truck> = {
-  achat: ShoppingBasket, chargement: Truck, etape: MapPin, livraison_lieu_prevu: Flag, pointage_lome: Warehouse, pesee: Scale, reception: PackageCheck,
+  achat: ShoppingBasket, chargement: Truck, etape: MapPin, livraison_lieu_prevu: Flag, pointage_lome: Warehouse, pesee: Scale, reception: PackageCheck, arrivee_declaree: Camera,
 };
 
 /** Vue timeline d'un lot (§2.9, US-21) : origine → étapes → Lomé, réceptionnaires, écarts, preuves. */

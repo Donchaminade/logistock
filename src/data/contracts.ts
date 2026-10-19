@@ -2,9 +2,9 @@
 // L'interface ne parle qu'à ces interfaces : aujourd'hui l'implémentation est locale (localStorage),
 // demain une implémentation HTTP vers l'API Spring Boot prendra le relais sans toucher aux écrans.
 import type {
-  Advance, AppNotification, AuditEntry, Checkin, Collection, Contract, Database, Declaration, Debt, Delivery,
-  Entity, EntityOf, Expense, Id, Location, Need, Offer, PartialDelivery, Payment, PendingAction, PriceRevision,
-  Settings, TraceEvent, Transport, User,
+  Adjustment, Advance, AppNotification, AuditEntry, Checkin, Collection, Commission, Contract, Database, Declaration, Debt,
+  Delivery, Device, Driver, Entity, EntityOf, Expense, Id, Location, Need, Offer, OutboxItem, PartialDelivery, Payment,
+  PendingAction, Pickup, PriceRevision, Settings, TraceEvent, Transport, User, Vehicle,
 } from "@/lib/types";
 
 export interface Repository<T extends Entity> {
@@ -34,6 +34,13 @@ export type NotificationRepository = Repository<AppNotification>;
 export type PendingActionRepository = Repository<PendingAction>;
 export type AuditRepository = Repository<AuditEntry>;
 export type SettingsRepository = Repository<Settings>;
+export type DeviceRepository = Repository<Device>;
+export type VehicleRepository = Repository<Vehicle>;
+export type DriverRepository = Repository<Driver>;
+export type PickupRepository = Repository<Pickup>;
+export type AdjustmentRepository = Repository<Adjustment>;
+export type CommissionRepository = Repository<Commission>;
+export type OutboxRepository = Repository<OutboxItem>;
 
 export interface Repositories {
   users: UserRepository;
@@ -56,6 +63,13 @@ export interface Repositories {
   pending: PendingActionRepository;
   audit: AuditRepository;
   settings: SettingsRepository;
+  devices: DeviceRepository;
+  vehicles: VehicleRepository;
+  drivers: DriverRepository;
+  pickups: PickupRepository;
+  adjustments: AdjustmentRepository;
+  commissions: CommissionRepository;
+  outbox: OutboxRepository;
 }
 
 // Vérification à la compilation : une entrée par collection, avec le bon type.
@@ -74,6 +88,11 @@ export interface SessionStore {
   set(userId: Id | null): void;
 }
 
+/** Identifiant stable de l'appareil (autorisation d'appareil, code PIN, outbox). */
+export interface DeviceStore {
+  id(): string;
+}
+
 export type ChangeOrigin = "local" | "remote";
 
 export interface DataSource {
@@ -81,6 +100,7 @@ export interface DataSource {
   repos: Repositories;
   photos: PhotoStore;
   session: SessionStore;
+  device: DeviceStore;
   /** Instantané complet pour l'affichage. */
   snapshot(): Promise<Database>;
   /** Changement local (cet onglet) ou distant (autre onglet / serveur). */

@@ -152,3 +152,19 @@ export async function loading<T>(title: string, fn: () => Promise<T>): Promise<T
     Swal.close();
   }
 }
+
+/** Choix à deux actions (confirmer / autre action) + annuler. */
+export async function choose(opts: { title: string; html?: string; confirmText: string; denyText?: string; cancelText?: string; icon?: SweetAlertIcon }) {
+  const r = await modal.fire({
+    icon: opts.icon ?? "info",
+    title: opts.title,
+    html: opts.html,
+    showCancelButton: true,
+    showDenyButton: !!opts.denyText,
+    confirmButtonText: opts.confirmText,
+    denyButtonText: opts.denyText,
+    cancelButtonText: opts.cancelText ?? "Fermer",
+    customClass: { popup: "ls-popup", confirmButton: "ls-btn ls-btn-dark", denyButton: "ls-btn ls-btn-primary", cancelButton: "ls-btn ls-btn-ghost" },
+  });
+  return r.isConfirmed ? "confirm" : r.isDenied ? "deny" : null;
+}

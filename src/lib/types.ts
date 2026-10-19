@@ -1,7 +1,9 @@
 // Modèle de données de la maquette LogiStock (aligné sur le cahier des charges, §6.3).
 // Montants : entiers en FCFA. Quantités : entiers en kg. Dates : chaînes ISO 8601.
 
-export type Role = "patron" | "gestionnaire" | "fournisseur";
+export type Role = "patron" | "admin" | "gestionnaire" | "fournisseur" | "magasinier" | "chauffeur" | "comptable";
+/** Rôles soumis à la matrice de droits (le patron a tous les droits). */
+export type ManagedRole = Exclude<Role, "patron">;
 export type Product = "soja" | "cacao";
 export type Id = string;
 
@@ -20,8 +22,24 @@ export interface User extends Entity {
   zone?: string;
   active: boolean;
   mustChangePassword?: boolean;
+  /** Échecs de connexion consécutifs (US-01). */
+  failedAttempts?: number;
+  /** Compte bloqué temporairement jusqu'à cette date. */
+  lockedUntil?: string;
   createdAt: string;
   createdBy?: Id;
+}
+
+/** Appareil autorisé : code PIN pour déverrouiller, y compris hors ligne (US-01, §6.5). */
+export interface Device extends Entity {
+  userId: Id;
+  label: string;
+  /** SHA-256(sel + PIN), jamais le PIN en clair. */
+  pinHash: string;
+  salt: string;
+  authorizedAt: string;
+  lastUnlockAt?: string;
+  failedPins: number;
 }
 
 export type NeedStatus = "ouvert" | "partiellement_couvert" | "couvert" | "clos" | "annule";
@@ -56,7 +74,7 @@ export interface Offer extends Entity {
   contractId?: Id;
 }
 
-export type ContractStatus = "brouillon" | "actif" | "clos" | "annule";
+export type ContractStatus = "brouillon" | "actif" | "suspendu" | "clos" | "annule";
 export interface Contract extends Entity {
   ref: string;
   needId?: Id;
@@ -74,7 +92,11 @@ export interface Contract extends Entity {
   /** Case « transport payé ou non » : true = transport à la charge du patron. */
   transportPaidByPatron: boolean;
   status: ContractStatus;
-  closedAs?: "solde" | "dette";
+  closedAs?: "solde" | "dette" | "rembourse" | "reporte";
+  /** Règle de commission applicable (§2.1). */
+  commissionRuleId?: Id;
+  /** Contrat qui a reçu le report du solde (§1.10). */
+  carriedTo?: Id;
   createdBy: Id;
   createdAt: string;
 }
@@ -92,7 +114,13 @@ export interface PriceRevision extends Entity {
   effectiveAt: string;
   by: Id;
   at: string;
+  /** SHA-256 du contenu signé, chaîné avec la révision précédente du contrat. */
+  hash: string;
+  prevHash: string;
+  /** Signature Ed25519 (hex) du hash. */
   signature: string;
+  /** Accusé de lecture du fournisseur (§1.4). */
+  ackAt?: string;
 }
 
 export type PaymentMode = "especes" | "virement" | "flooz" | "tmoney" | "autre";
@@ -109,22 +137,90 @@ export interface Advance extends Entity {
   photo?: string;
   status: AdvanceStatus;
   receiptNo: string;
+  /** SHA-256 (hex) du contenu du reçu. */
   receiptHash: string;
+  /** Signature Ed25519 (hex) de l'empreinte. */
+  receiptSignature: string;
   by: Id;
   at: string;
+  /** Contre-écriture : motif de l'annulation. */
+  cancelReason?: string;
 }
 
 export interface Location extends Entity {
   name: string;
   type: "origine" | "etape" | "destination" | "autre";
   country: string;
+  /** Coordonnées facultatives (carte des trajets). */
+  lat?: number;
+  lng?: number;
   createdBy?: Id;
 }
 
+export interface Vehicle extends Entity {
+  plate: string;
+  type: string;
+  capacityKg: number;
+  owner: string;
+  active: boolean;
+}
+
+export interface Driver extends Entity {
+  name: string;
+  phone: string;
+  licence?: string;
+  /** Compte chauffeur lié (facultatif). */
+  userId?: Id;
+  active: boolean;
+}
+
+export interface RouteStage {
+  id: Id;
+  order: number;
+  place: string;
+  passedAt?: string;
+  comment?: string;
+  photo?: string;
+  by?: Id;
+}
+
+export interface PickupStop {
+  id: Id;
+  supplierId: Id;
+  contractId: Id;
+  plannedKg: number;
+  loadedKg?: number;
+  bags?: number;
+  photo?: string;
+  confirmedAt?: string;
+  confirmedBy?: Id;
+  /** Lot (transport) créé à la confirmation du chargement. */
+  transportId?: Id;
+}
+
+/** Ordre d'enlèvement (§2.4, US-06) : un véhicule, un chauffeur, des acheteurs à visiter, un trajet. */
+export interface Pickup extends Entity {
+  ref: string;
+  vehicle: string;
+  driverId: Id;
+  carrier: string;
+  plannedDate: string;
+  stops: PickupStop[];
+  route: RouteStage[];
+  arrivalDeclaredAt?: string;
+  arrivalPhoto?: string;
+  createdBy: Id;
+  createdAt: string;
+}
+export type PickupStatus = "planifie" | "en_route" | "charge" | "livre" | "cloture";
+
 export type TransportStatus = "en_route" | "arrive" | "receptionne";
+/** Transport = lot suivi de son origine jusqu'à Lomé (traçabilité par lot, §2.9). */
 export interface Transport extends Entity {
   ref: string;
   contractId: Id;
+  pickupId?: Id;
+  driverId?: Id;
   product: Product;
   origin: string;
   tonsKg: number;
@@ -145,6 +241,7 @@ export type TraceType =
   | "chargement"
   | "etape"
   | "livraison_lieu_prevu"
+  | "arrivee_declaree"
   | "pointage_lome"
   | "pesee"
   | "reception";
@@ -163,6 +260,7 @@ export interface TraceEvent extends Entity {
   comment?: string;
   photo?: string;
   by: Id;
+  /** SHA-256 (hex) de l'événement, chaîné avec l'événement précédent du lot. */
   hash: string;
   prevHash: string;
 }
@@ -178,8 +276,10 @@ export interface Checkin extends Entity {
   cost: number;
   costBeneficiary: string;
   debitedOn: "charges_patron" | "solde_fournisseur";
+  photo?: string;
 }
 
+export type DeliveryStatus = "pesee" | "receptionnee" | "contestee";
 export interface Delivery extends Entity {
   contractId: Id;
   transportId?: Id;
@@ -188,10 +288,18 @@ export interface Delivery extends Entity {
   netKg: number;
   bags: number;
   ticketNo: string;
+  ticketPhoto?: string;
+  /** Humidité (%) : facultatif, utile pour le cacao. */
+  humidity?: number;
+  status: DeliveryStatus;
+  weighedAt: string;
+  weighedBy: Id;
+  /** Prix figé à la réception (0 tant que la livraison n'est que pesée). */
   price: number;
   value: number;
-  receivedAt: string;
-  receivedBy: Id;
+  receivedAt?: string;
+  receivedBy?: Id;
+  disputeReason?: string;
 }
 
 export interface PartialDelivery extends Entity {
@@ -217,14 +325,18 @@ export interface Declaration extends Entity {
   mode: PaymentMode;
   photo?: string;
   createdAt: string;
+  /** Clé d'idempotence générée sur l'appareil (§6.2). */
+  clientUuid?: string;
 }
 
 export interface Payment extends Entity {
-  direction: "fournisseur_vers_patron";
-  kind: "remboursement";
+  direction: "fournisseur_vers_patron" | "patron_vers_fournisseur";
+  /** remboursement en argent, en marchandise (valorisée au prix en vigueur), ou règlement d'un trop-livré. */
+  kind: "remboursement" | "marchandise" | "trop_livre";
   contractId: Id;
   debtId?: Id;
   amount: number;
+  qtyKg?: number;
   mode: PaymentMode;
   reference?: string;
   photo?: string;
@@ -232,19 +344,68 @@ export interface Payment extends Entity {
   by: Id;
 }
 
+export type ExpenseCategory = "transport" | "maintenance" | "commission" | "frais_vehicule" | "autre";
 export interface Expense extends Entity {
-  category: "transport" | "maintenance" | "commission" | "autre";
+  category: ExpenseCategory;
   label: string;
   amount: number;
   date: string;
   beneficiary: string;
   transportId?: Id;
   contractId?: Id;
+  commissionId?: Id;
+  vehicle?: string;
+  photo?: string;
   debitedOn: "charges_patron" | "solde_fournisseur";
+  /** Frais déclarés par un chauffeur : à valider par le patron ou l'admin. */
+  status?: "a_valider" | "validee" | "refusee";
   by: Id;
 }
 
-export type DebtStatus = "ouverte" | "en_remboursement" | "soldee";
+/** Ajustement J du solde (§1.5) : positif = réduit ce que doit le fournisseur. */
+export interface Adjustment extends Entity {
+  contractId: Id;
+  amount: number;
+  kind: "perte_acceptee" | "correction" | "commission" | "report_sortant" | "report_entrant";
+  reason: string;
+  by: Id;
+  at: string;
+  linkedContractId?: Id;
+}
+
+export type CommissionMode = "par_kg" | "pourcentage" | "forfait";
+export interface CommissionRule {
+  id: Id;
+  label: string;
+  mode: CommissionMode;
+  /** FCFA/kg, pourcentage en points de base (200 = 2 %), ou montant forfaitaire. */
+  value: number;
+  /** versee : payée à part (charge du patron) ; deduite : déduite du solde de l'acheteur. */
+  settlement: "versee" | "deduite";
+  active: boolean;
+}
+
+export type CommissionStatus = "calculee" | "validee" | "payee";
+export interface Commission extends Entity {
+  contractId: Id;
+  ruleId: Id;
+  beneficiaryId: Id;
+  /** Base de calcul couverte par cette commission (écart depuis la précédente). */
+  baseKg: number;
+  baseValue: number;
+  amount: number;
+  status: CommissionStatus;
+  calculatedAt: string;
+  calculatedBy: Id;
+  validatedAt?: string;
+  validatedBy?: Id;
+  paidAt?: string;
+  paidBy?: Id;
+  mode?: PaymentMode | "deduction";
+  reference?: string;
+}
+
+export type DebtStatus = "ouverte" | "en_remboursement" | "en_litige" | "soldee" | "passee_en_perte";
 export interface Debt extends Entity {
   contractId: Id;
   supplierId: Id;
@@ -252,6 +413,24 @@ export interface Debt extends Entity {
   createdAt: string;
   dueDate: string;
   status: DebtStatus;
+  comment?: string;
+  writeOffReason?: string;
+  writeOffSignature?: string;
+}
+
+/** File d'attente hors ligne (outbox, §6.2) : une entrée par opération saisie sans réseau. */
+export interface OutboxItem extends Entity {
+  /** Clé d'idempotence (UUID généré sur l'appareil). */
+  uuid: string;
+  label: string;
+  by: Id;
+  at: string;
+  /** Appareil qui a saisi l'opération. */
+  device: string;
+  status: "en_attente" | "synchronise";
+  syncedAt?: string;
+  /** Notifications retenues jusqu'à la synchronisation. */
+  notificationIds: Id[];
 }
 
 export interface AppNotification extends Entity {
@@ -263,6 +442,8 @@ export interface AppNotification extends Entity {
   at: string;
   by: Id;
   readBy: Id[];
+  /** Retenue dans l'outbox tant que l'appareil émetteur est hors ligne. */
+  deferred?: boolean;
 }
 
 export type PendingKind = "suppression" | "modification_sensible";
@@ -288,44 +469,62 @@ export interface AuditEntry extends Entity {
   entity: string;
   entityId?: Id;
   detail: string;
+  /** Valeurs avant / après (JSON), quand l'action modifie un élément existant. */
+  before?: string;
+  after?: string;
+  device?: string;
+  /** SHA-256 (hex) du contenu de la ligne et du hash de la ligne précédente. */
   hash: string;
   prevHash: string;
 }
 
 export type PermEntity =
-  | "fournisseurs"
-  | "besoins"
-  | "contrats"
-  | "remises"
-  | "transports"
-  | "pointages"
-  | "traces"
-  | "partielles"
-  | "lieux";
+  | "utilisateurs" | "fournisseurs" | "droits" | "parametres" | "besoins" | "propositions" | "contrats" | "remises"
+  | "revisions" | "partielles" | "declarations" | "transports" | "pointages" | "couts" | "traces" | "pesees"
+  | "dettes" | "pertes" | "commissions" | "charges" | "actions" | "tableau" | "journal" | "exports" | "lieux" | "vehicules";
 export type DeleteMode = "directe" | "confirmation" | "interdite";
 export interface Perm {
   c: boolean;
   r: boolean;
   u: boolean;
   d: DeleteMode;
+  /** Portée limitée aux données de l'utilisateur (« P » du cahier). */
+  own?: boolean;
 }
-export type PermMatrix = Record<"gestionnaire" | "fournisseur", Record<PermEntity, Perm>>;
+export type PermMatrix = Record<ManagedRole, Record<PermEntity, Perm>>;
 
 export interface Settings extends Entity {
   perms: PermMatrix;
   weightGapThresholdPct: number;
+  /** Connexion : échecs avant blocage et durée du blocage (US-01). */
+  maxFailedLogins: number;
+  lockMinutes: number;
+  /** Alertes (§2.7). */
+  stockAlertKg: number;
+  dueSoonDays: number;
+  inactivityDays: number;
+  syncAlertHours: number;
+  /** Blocage d'une nouvelle avance si la dette ouverte du fournisseur dépasse ce montant (0 = désactivé). */
+  debtBlockThreshold: number;
+  /** Prix de revente estimés, pour la marge (§1.7). */
+  resalePrice: Record<Product, number>;
+  commissionRules: CommissionRule[];
   seededAt: string;
 }
 
 /** Instantané complet des données, tel que le reçoit l'interface. */
 export interface Database {
   users: User[];
+  devices: Device[];
   needs: Need[];
   offers: Offer[];
   contracts: Contract[];
   revisions: PriceRevision[];
   advances: Advance[];
   locations: Location[];
+  vehicles: Vehicle[];
+  drivers: Driver[];
+  pickups: Pickup[];
   transports: Transport[];
   traces: TraceEvent[];
   checkins: Checkin[];
@@ -334,10 +533,13 @@ export interface Database {
   declarations: Declaration[];
   payments: Payment[];
   expenses: Expense[];
+  adjustments: Adjustment[];
+  commissions: Commission[];
   debts: Debt[];
   notifications: AppNotification[];
   pending: PendingAction[];
   audit: AuditEntry[];
+  outbox: OutboxItem[];
   settings: Settings[];
 }
 

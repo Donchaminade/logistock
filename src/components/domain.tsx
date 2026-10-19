@@ -10,7 +10,7 @@ import {
   acceptOffer, createContract, createTransport, declarePartial, recordAdvance, resolvePhoto, reviseRemainderPrice,
   type ContractInput,
 } from "@/services/actions";
-import { fail, info, success, toast } from "./alerts";
+import { confirm, fail, info, success, toast } from "./alerts";
 import { useApp } from "./DataProvider";
 import { Badge, Button, cx, Field, Input, Modal, PhotoInput, Segmented, Select, Textarea, Toggle } from "./ui";
 
@@ -35,7 +35,8 @@ export function ContractBadges({ c, m }: { c: Contract; m: ContractMetrics }) {
   return (
     <span className="inline-flex flex-wrap gap-1.5">
       {c.status === "actif" && <Badge tone="blue">Actif</Badge>}
-      {c.status === "clos" && <Badge tone="dark">{c.closedAs === "dette" ? "Clos — en dette" : "Clos — soldé"}</Badge>}
+      {c.status === "suspendu" && <Badge tone="outline">Suspendu</Badge>}
+      {c.status === "clos" && <Badge tone="dark">{{ dette: "Clos — en dette", rembourse: "Clos — remboursé", reporte: "Clos — reporté", solde: "Clos — soldé" }[c.closedAs ?? "solde"]}</Badge>}
       {m.hasPartial && <Badge tone="outline">Livraison partielle</Badge>}
       {m.advancesToComplete > 0 && <Badge tone="err">Photo manquante</Badge>}
       {late && <Badge tone="err">Échu non soldé</Badge>}
@@ -51,8 +52,9 @@ export function ContractModal({ open, onClose, offerId, preset, onDone }: { open
   const { db, me } = useApp();
   const suppliers = db.users.filter((u) => u.role === "fournisseur" && u.active && !u.deleted);
   const places = db.locations.filter((l) => !l.deleted);
-  const [f, setF] = useState({ supplierId: "", product: "soja" as Product, tons: "", price: "", amount: "", received: today(), delivery: plusDays(30), place: "Kaboli", otherPlace: "", paid: true });
+  const [f, setF] = useState({ supplierId: "", product: "soja" as Product, tons: "", price: "", amount: "", received: today(), delivery: plusDays(30), place: "Kaboli", otherPlace: "", paid: true, rule: "" });
   const [busy, setBusy] = useState(false);
+  const rules = db.settings[0]!.commissionRules.filter((r) => r.active);
   useEffect(() => {
     if (!open) return;
     setF({
@@ -61,7 +63,7 @@ export function ContractModal({ open, onClose, offerId, preset, onDone }: { open
       tons: preset?.qtyKg ? String(preset.qtyKg / 1000) : "",
       price: preset?.initialPrice ? String(preset.initialPrice) : "",
       amount: preset?.amount ? String(preset.amount) : "",
-      received: today(), delivery: plusDays(30), place: "Kaboli", otherPlace: "", paid: true,
+      received: today(), delivery: plusDays(30), place: "Kaboli", otherPlace: "", paid: true, rule: "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -77,6 +79,7 @@ export function ContractModal({ open, onClose, offerId, preset, onDone }: { open
         supplierId: f.supplierId, product: f.product, qtyKg, initialPrice: price, amount: Number(f.amount) || computed,
         moneyReceivedDate: new Date(f.received + "T09:00:00Z").toISOString(), deliveryDate: new Date(f.delivery + "T00:00:00Z").toISOString(),
         deliveryPlace: f.place === "__autre" ? f.otherPlace : f.place, transportPaidByPatron: f.paid,
+        commissionRuleId: f.rule || undefined,
       };
       const c = offerId ? await acceptOffer(me, offerId, input) : await createContract(me, input);
       onClose();
@@ -130,6 +133,12 @@ export function ContractModal({ open, onClose, offerId, preset, onDone }: { open
             <Input value={f.otherPlace} onChange={set("otherPlace")} placeholder="ex. Blitta" />
           </Field>
         )}
+        <Field label="Règle de commission (§1.8)" className="sm:col-span-2" hint="Calculée sur les livraisons réceptionnées, puis validée et payée.">
+          <Select value={f.rule} onChange={set("rule")} data-testid="contract-rule">
+            <option value="">Aucune commission</option>
+            {rules.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </Select>
+        </Field>
         <div className="flex items-center justify-between gap-4 rounded-xl border border-line p-4 sm:col-span-2">
           <div>
             <div className="text-[14px] font-semibold">Transport payé par le patron</div>
@@ -199,7 +208,16 @@ export function AdvanceModal({ open, onClose, contract }: { open: boolean; onClo
   async function submit() {
     setBusy(true);
     try {
-      const adv = await recordAdvance(me, contract.id, { amount: Number(f.amount) || computed, qtyKg, unitPrice: Number(f.price), date: fromLocalInput(f.date), mode: f.mode, reference: f.reference || undefined, photo: f.photo });
+      const input = { amount: Number(f.amount) || computed, qtyKg, unitPrice: Number(f.price), date: fromLocalInput(f.date), mode: f.mode, reference: f.reference || undefined, photo: f.photo };
+      let adv;
+      try {
+        adv = await recordAdvance(me, contract.id, input);
+      } catch (e) {
+        if (me.role !== "patron" || !String((e as Error).message).startsWith("Avance bloquée")) throw e;
+        const ok = await confirm({ title: "Dette au-dessus du seuil", html: `${(e as Error).message}<br/><br/>Verser quand même ? La décision sera tracée au journal.`, confirmText: "Verser quand même", icon: "warning", dark: true });
+        if (!ok) return;
+        adv = await recordAdvance(me, contract.id, { ...input, force: true });
+      }
       onClose();
       const snap = await (await import("@/data")).dataSource().snapshot();
       const html = adv.status === "a_completer"
@@ -246,12 +264,14 @@ export function RevisionModal({ open, onClose, contract }: { open: boolean; onCl
   const [price, setPrice] = useState("");
   const [option, setOption] = useState<"A" | "B">("A");
   const [reason, setReason] = useState("");
+  const [effect, setEffect] = useState(today());
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (open) {
       setPrice("");
       setReason("");
       setOption("A");
+      setEffect(today());
     }
   }, [open]);
   const np = Number(price);
@@ -259,10 +279,10 @@ export function RevisionModal({ open, onClose, contract }: { open: boolean; onCl
   async function submit() {
     setBusy(true);
     try {
-      const r = await reviseRemainderPrice(me, contract.id, { newPrice: np, option, reason });
+      const r = await reviseRemainderPrice(me, contract.id, { newPrice: np, option, reason, effectiveAt: new Date(effect + "T00:00:00Z").toISOString() });
       onClose();
       if (r.queued) await info("Demande envoyée au patron", "La révision de prix est une action sensible : elle s'appliquera après validation dans « Actions à confirmer ».");
-      else await success("Prix du reliquat ajusté", `Reste à livrer : <b>${tonnes(r.revision.remainderAfterKg)}</b> au lieu de ${tonnes(r.sim.before)}.${option === "B" ? `<br/>Complément à verser : <b>${fcfa(r.revision.complement)}</b>.` : ""}<br/>Le fournisseur est notifié.`);
+      else await success("Prix du reliquat ajusté", `Reste à livrer : <b>${tonnes(r.revision.remainderAfterKg)}</b> au lieu de ${tonnes(r.sim.before)}.${option === "B" ? `<br/>Complément à verser : <b>${fcfa(r.revision.complement)}</b>.` : ""}<br/>Révision horodatée, chaînée (SHA-256) et signée (Ed25519). Le fournisseur est notifié.`);
     } catch (e) {
       await fail(e);
     } finally {
@@ -271,12 +291,13 @@ export function RevisionModal({ open, onClose, contract }: { open: boolean; onCl
   }
   return (
     <Modal open={open} onClose={onClose} title="Ajuster le prix du reliquat" sub={`${contract.ref} · prix en vigueur ${prixKg(m.P)}`} wide
-      footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button onClick={submit} loading={busy} disabled={!sim} data-testid="revision-submit">{me.role === "patron" ? "Appliquer et notifier" : "Envoyer au patron pour validation"}</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button onClick={submit} loading={busy} disabled={!sim} data-testid="revision-submit">{me.role === "patron" ? "Appliquer, signer et notifier" : "Envoyer au patron pour validation"}</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nouveau prix au kg (FCFA)" hint="Seul le reliquat est revalorisé : les livraisons déjà réceptionnées gardent leur prix.">
           <Input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={`ex. ${m.P + 50}`} name="newPrice" autoFocus />
         </Field>
         <Field label="Motif"><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="ex. Hausse du cours à Kara" name="reason" /></Field>
+        <Field label="Date d'effet" hint="Horodatage de l'enregistrement : celui du serveur en production."><Input type="date" value={effect} onChange={(e) => setEffect(e.target.value)} /></Field>
       </div>
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between gap-3">
@@ -297,7 +318,7 @@ export function RevisionModal({ open, onClose, contract }: { open: boolean; onCl
       <div className="mt-5 rounded-2xl bg-ink p-4 text-white sm:p-5">
         <div className="eyebrow !text-white/45">Calcul</div>
         <div className="num mt-2 space-y-1.5 text-[13.5px] leading-relaxed text-white/85">
-          <div>Solde S = A − V − R + T = {fcfa(m.A)} − {fcfa(m.V)}{m.R ? ` − ${fcfa(m.R)}` : ""}{m.Tf ? ` + ${fcfa(m.Tf)}` : ""} = <b className="text-white">{fcfa(m.S)}</b></div>
+          <div>Solde S = A − V − R − J + T = {fcfa(m.A)} − {fcfa(m.V)}{m.R ? ` − ${fcfa(m.R)}` : ""}{m.J ? ` − ${fcfa(m.J)}` : ""}{m.Tf ? ` + ${fcfa(m.Tf)}` : ""} = <b className="text-white">{fcfa(m.S)}</b></div>
           <div>Avant : S / {m.P} = <b className="text-white">{group(sim?.before ?? m.Q)} kg</b></div>
           {sim && option === "A" && <div>Après (option A) : {group(m.S)} / {np} = <b className="text-brand-200">{group(sim.optionA)} kg</b></div>}
           {sim && option === "B" && <div>Après (option B) : {group(sim.before)} kg × ({np} − {m.P}) = complément <b className="text-brand-200">{fcfa(sim.complement)}</b></div>}
@@ -405,8 +426,14 @@ export function TransportModal({ open, onClose, contractId, onDone }: { open: bo
           <Field label="Tonnes chargées"><Input inputMode="decimal" value={f.tons} onChange={set("tons")} placeholder="ex. 30" name="tons" /></Field>
         )}
         {f.origin === "__libre" && <Field label="Tonnes chargées"><Input inputMode="decimal" value={f.tons} onChange={set("tons")} placeholder="ex. 30" name="tons" /></Field>}
-        <Field label="Véhicule (matricule)"><Input value={f.vehicle} onChange={set("vehicle")} placeholder="TG-1234-AB" className="uppercase" name="vehicle" /></Field>
-        <Field label="Chauffeur"><Input value={f.driver} onChange={set("driver")} placeholder="Nom du chauffeur" name="driver" /></Field>
+        <Field label="Véhicule (matricule)" hint="Choisi dans la liste des véhicules ou créé à la volée.">
+          <Input value={f.vehicle} onChange={(e) => { const v = db.vehicles.find((x) => x.plate === e.target.value.toUpperCase()); setF({ ...f, vehicle: e.target.value, carrier: v && !f.carrier ? v.owner : f.carrier }); }} placeholder="TG-1234-AB" className="uppercase" name="vehicle" list="ls-vehicles" />
+          <datalist id="ls-vehicles">{db.vehicles.filter((v) => v.active && !v.deleted).map((v) => <option key={v.id} value={v.plate}>{v.type} · {v.owner}</option>)}</datalist>
+        </Field>
+        <Field label="Chauffeur">
+          <Input value={f.driver} onChange={(e) => { const d = db.drivers.find((x) => x.name === e.target.value); setF({ ...f, driver: e.target.value, driverPhone: d ? d.phone : f.driverPhone }); }} placeholder="Nom du chauffeur" name="driver" list="ls-drivers" />
+          <datalist id="ls-drivers">{db.drivers.filter((d) => d.active && !d.deleted).map((d) => <option key={d.id} value={d.name}>{d.phone}</option>)}</datalist>
+        </Field>
         <Field label="Téléphone du chauffeur"><Input inputMode="tel" value={f.driverPhone} onChange={set("driverPhone")} placeholder="98 00 00 00" /></Field>
         <Field label="Livreur / transporteur"><Input value={f.carrier} onChange={set("carrier")} placeholder="ex. Transports Zio" name="carrier" /></Field>
         <Field label="Chargement"><Input type="datetime-local" value={f.loading} onChange={set("loading")} /></Field>

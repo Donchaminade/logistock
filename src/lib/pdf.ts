@@ -1,5 +1,6 @@
 // Reçu de remise d'argent + récapitulatif du contrat, en PDF (jsPDF, généré sur l'appareil).
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import { metrics } from "./calc";
 import { date, dateTime, fcfa, modeLabel, prixKg, productLabel, tonnes } from "./format";
 import type { Advance, Database } from "./types";
@@ -160,7 +161,7 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   });
 
   // Photo
-  y += 54;
+  y += 52;
   if (photoUrl) {
     const jpg = await toJpeg(photoUrl);
     if (jpg) {
@@ -168,25 +169,57 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       t("Photo de la remise", 16, y);
-      doc.addImage(jpg, "JPEG", 16, y + 2.5, 58, 40);
+      doc.addImage(jpg, "JPEG", 16, y + 2.5, 30, 18);
     }
   }
   // Signatures
   doc.setDrawColor(...line);
   doc.setTextColor(...muted);
   doc.setFontSize(8.5);
-  doc.line(86, y + 36, 140, y + 36);
-  doc.line(148, y + 36, W - 16, y + 36);
-  t("Signature du fournisseur", 86, y + 41);
-  t("Signature du patron", 148, y + 41);
+  doc.line(86, y + 16, 140, y + 16);
+  doc.line(148, y + 16, W - 16, y + 16);
+  t("Signature du fournisseur", 86, y + 20.5);
+  t("Signature du patron", 148, y + 20.5);
+
+  // Bloc de vérification : empreinte SHA-256, signature Ed25519, QR code vers l'écran de vérification
+  const vy = 247;
+  doc.setFillColor(244, 245, 247);
+  doc.roundedRect(16, vy, W - 32, 32, 3, 3, "F");
+  const url = verifyUrl(adv);
+  try {
+    const qr = await QRCode.toDataURL(url, { margin: 0, width: 220, color: { dark: "#0B0D12", light: "#F4F5F7" } });
+    doc.addImage(qr, "PNG", W - 16 - 28, vy + 2, 26, 26);
+  } catch {
+    /* QR facultatif */
+  }
+  doc.setTextColor(...ink);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  t("Vérification du reçu", 21, vy + 6.5);
+  doc.setFont("courier", "normal");
+  doc.setFontSize(6.6);
+  t(`SHA-256   ${adv.receiptHash}`, 21, vy + 12);
+  t(`Ed25519   ${adv.receiptSignature.slice(0, 64)}`, 21, vy + 16.5);
+  t(`          ${adv.receiptSignature.slice(64)}`, 21, vy + 20);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...muted);
+  t(`Scannez le QR code ou ouvrez ${url.replace(/^https?:\/\//, "")}`, 21, vy + 25);
+  t("Clé de signature de DÉMONSTRATION embarquée dans la maquette : en production, la signature est faite par le serveur.", 21, vy + 29, { maxWidth: W - 32 - 36 });
 
   // Pied
   doc.setFontSize(7.5);
   doc.setTextColor(...muted);
-  t(`Empreinte du reçu : ${adv.receiptHash}  ·  Généré le ${dateTime(new Date().toISOString())} (heure de Lomé)`, 16, 285);
-  t("LogiStock · maquette interactive · données fictives", W - 16, 285, { align: "right" });
+  t(`Généré le ${dateTime(new Date().toISOString())} (heure de Lomé)`, 16, 288);
+  t("LogiStock · maquette interactive · données fictives", W - 16, 288, { align: "right" });
 
   return doc.output("blob");
+}
+
+/** Lien de vérification imprimé sur le reçu (numéro + début de l'empreinte). */
+export function verifyUrl(adv: Advance) {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/verifier/?no=${adv.receiptNo}&h=${adv.receiptHash.slice(0, 16)}`;
 }
 
 export function receiptFileName(adv: Advance) {

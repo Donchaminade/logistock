@@ -1,15 +1,19 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut, RotateCcw } from "lucide-react";
+import { Bell, CloudOff, Lock, LogOut, RefreshCw, RotateCcw, Wifi } from "lucide-react";
 import { logout, resetDemo } from "@/services/actions";
 import { roleLabel } from "@/lib/format";
-import { confirm, toast } from "./alerts";
+import { choose, confirm, toast } from "./alerts";
 import { forMe, useData } from "./DataProvider";
 import { Logo, LogoMark } from "./Logo";
-import { BOTTOM, SIDEBAR, type NavItem } from "./nav";
-import { Avatar, cx, PageSkeleton } from "./ui";
+import { BOTTOM, routeAllowed, SIDEBAR, type NavItem } from "./nav";
+import { Avatar, cx, Empty, PageSkeleton } from "./ui";
+import { isOnline, isSimulatedOffline, onNetworkChange, setSimulatedOffline } from "@/services/network";
+import { syncOutbox } from "@/services/core";
+import { dateTime } from "@/lib/format";
+import type { Database, User } from "@/lib/types";
 
 function isActive(path: string, href: string) {
   if (href === "/accueil/") return path.startsWith("/accueil");
@@ -50,6 +54,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pending = db.pending.filter((p) => p.status === "en_attente" && (me.role === "patron" || p.by === me.id)).length;
   const unread = db.notifications.filter((n) => forMe(n, me) && !n.readBy.includes(me.id)).length;
   const badgeOf = (i: NavItem) => (i.badge === "pending" ? pending : i.badge === "notifications" ? unread : 0);
+  const allowed = routeAllowed(path.replace(/\/$/, ""), me.role);
+  const bottom = BOTTOM[me.role];
 
   return (
     <div className="min-h-dvh lg:pl-[272px]">
@@ -108,7 +114,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="truncate text-[14px] font-bold lg:hidden">LogiStock</div>
           </div>
-          <span className="hidden rounded-full border border-line-2 px-2.5 py-1 text-[11.5px] font-semibold text-muted sm:inline">Données fictives — démo</span>
+          <span className="hidden rounded-full border border-line-2 px-2.5 py-1 text-[11.5px] font-semibold text-muted xl:inline">Données fictives — démo</span>
+          <NetworkIndicator db={db} me={me} />
           <Link href="/notifications/" className="relative grid size-10 place-items-center rounded-full text-ink hover:bg-canvas" aria-label={`Notifications (${unread} non lues)`} data-testid="bell">
             <Bell className="size-5" />
             {unread > 0 && <span className="num absolute right-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-600 px-1 text-[10.5px] font-bold text-white ring-2 ring-white">{unread}</span>}
@@ -131,12 +138,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main key={me.id} className="mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">{children}</main>
+      <main key={me.id} className="mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">
+        {allowed ? children : <Empty icon={<Lock className="size-5" />} title="Accès réservé" text={`Cet écran n'est pas ouvert au rôle « ${roleLabel[me.role]} ».`} action={<Link href="/accueil/" className="text-[14px] font-semibold text-brand-700">Retour à l&apos;accueil</Link>} />}
+      </main>
 
       {/* Bottom nav (téléphone et tablette) */}
       <nav className="no-print pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white lg:hidden" aria-label="Navigation principale">
-        <ul className="mx-auto grid max-w-xl grid-cols-5">
-          {BOTTOM[me.role].map((i) => {
+        <ul className="mx-auto grid max-w-xl" style={{ gridTemplateColumns: `repeat(${bottom.length}, minmax(0, 1fr))` }}>
+          {bottom.map((i) => {
             const active = isActive(path, i.href);
             const b = badgeOf(i);
             return (
@@ -155,5 +164,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </ul>
       </nav>
     </div>
+  );
+}
+
+/** Indicateur réseau : en ligne / hors ligne, opérations en attente, dernière synchronisation, simulation hors ligne. */
+function NetworkIndicator({ db, me }: { db: Database; me: User }) {
+  const [online, setOnline] = useState(true);
+  const [sim, setSim] = useState(false);
+  useEffect(() => {
+    setOnline(isOnline());
+    setSim(isSimulatedOffline());
+    return onNetworkChange((o) => {
+      setOnline(o);
+      setSim(isSimulatedOffline());
+    });
+  }, []);
+  const device = typeof window === "undefined" ? "" : localStorage.getItem("logistock:device") ?? "";
+  const mine = db.outbox.filter((o) => o.device === device);
+  const waiting = mine.filter((o) => o.status === "en_attente");
+  const last = mine.filter((o) => o.syncedAt).sort((a, b) => b.syncedAt!.localeCompare(a.syncedAt!))[0]?.syncedAt;
+
+  async function open() {
+    const list = waiting.length ? `<ul style="text-align:left;margin:10px 0 0;padding-left:18px;font-size:13px">${waiting.slice(0, 6).map((w) => `<li>${w.label} · ${dateTime(w.at)}</li>`).join("")}</ul>` : "";
+    const r = await choose({
+      title: online ? "En ligne" : "Hors ligne",
+      html: `${online ? "Les saisies sont envoyées immédiatement." : "Les saisies autorisées hors ligne (déclarations, étapes, pointage, pesée, frais) sont gardées sur l'appareil puis envoyées au retour du réseau. Les opérations financières exigent le réseau."}<br/><br/><b>${waiting.length}</b> opération(s) en attente${last ? ` · dernière synchronisation ${dateTime(last)}` : ""}.${list}<br/><small>La simulation ne concerne que cet onglet.</small>`,
+      confirmText: sim ? "Rétablir le réseau" : "Simuler hors ligne",
+      denyText: online && waiting.length > 0 ? "Synchroniser maintenant" : undefined,
+    });
+    if (r === "confirm") {
+      setSimulatedOffline(!sim);
+      toast(!sim ? "Mode hors ligne simulé" : "Réseau rétabli", !sim ? "Dans cet onglet uniquement." : "Synchronisation en cours…", "info");
+    } else if (r === "deny") {
+      const n = await syncOutbox();
+      toast("Synchronisé", `${n} opération(s) envoyée(s).`);
+    }
+  }
+  void me;
+  return (
+    <button onClick={() => void open()} data-testid="net-indicator" data-online={online ? "1" : "0"} className={cx("inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold", online ? "border border-line-2 text-ink" : "bg-ink text-white")} aria-label={online ? "En ligne" : "Hors ligne"}>
+      {online ? (waiting.length ? <RefreshCw className="size-3.5 animate-spin" /> : <Wifi className="size-3.5 text-brand-600" />) : <CloudOff className="size-3.5" />}
+      <span className="hidden sm:inline">{online ? (waiting.length ? "Synchronisation…" : "Synchronisé") : "Hors ligne"}</span>
+      {waiting.length > 0 && <span className="num grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-600 px-1 text-[10.5px] font-bold text-white" data-testid="outbox-count">{waiting.length}</span>}
+    </button>
   );
 }

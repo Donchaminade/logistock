@@ -48,7 +48,10 @@ export function relative(iso: string): string {
 
 export const productLabel = { soja: "Soja", cacao: "Cacao" } as const;
 export const modeLabel = { especes: "Espèces", virement: "Virement", flooz: "Flooz", tmoney: "T-Money", autre: "Autre" } as const;
-export const roleLabel = { patron: "Patron", gestionnaire: "Gestionnaire délégué", fournisseur: "Fournisseur" } as const;
+export const roleLabel = {
+  patron: "Patron", admin: "Administrateur", gestionnaire: "Gestionnaire délégué", fournisseur: "Fournisseur",
+  magasinier: "Magasinier", chauffeur: "Chauffeur", comptable: "Comptable",
+} as const;
 
 /** Valeur ISO pour un <input type="datetime-local"> (heure de Lomé = UTC). */
 export function toLocalInput(iso: string): string {

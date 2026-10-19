@@ -3,6 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from "next/navigation";
 import { dataSource } from "@/data";
 import type { AppNotification, Database, User } from "@/lib/types";
+import { syncOutbox } from "@/services/core";
+import { isOnline, onNetworkChange } from "@/services/network";
 import { fail, toast } from "./alerts";
 
 interface Ctx {
@@ -16,8 +18,9 @@ interface Ctx {
 
 const DataCtx = createContext<Ctx | null>(null);
 
+/** Notifications destinées à l'utilisateur ; celles saisies hors ligne restent en attente jusqu'à la synchronisation. */
 export function forMe(n: AppNotification, me: User) {
-  return n.to === me.id || n.to === me.role;
+  return !n.deferred && (n.to === me.id || n.to === me.role);
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -53,6 +56,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refresh();
     return dataSource().subscribe(() => void refresh());
+  }, [refresh]);
+
+  // Synchronisation automatique de l'outbox au retour du réseau (et au démarrage).
+  useEffect(() => {
+    const sync = async () => {
+      if (!isOnline()) return;
+      const n = await syncOutbox();
+      if (n > 0) {
+        toast("Synchronisé", `${n} opération${n > 1 ? "s" : ""} saisie${n > 1 ? "s" : ""} hors ligne envoyée${n > 1 ? "s" : ""}.`);
+        await refresh();
+      }
+    };
+    void sync();
+    return onNetworkChange((o) => o && void sync());
   }, [refresh]);
 
   const run = useCallback(async <T,>(fn: () => Promise<T>, okTitle?: string, okText?: string) => {

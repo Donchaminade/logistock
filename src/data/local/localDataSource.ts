@@ -1,17 +1,20 @@
 // Implémentation locale : SEUL fichier de l'application qui touche localStorage / sessionStorage.
 // Synchronisation en direct entre onglets : événement « storage » + BroadcastChannel.
-import { buildSeed } from "@/lib/seed";
+import { buildSealedSeed } from "@/lib/seed";
+import { uuid } from "@/lib/crypto";
 import type { Collection, Database, Entity, EntityOf, Id } from "@/lib/types";
-import type { ChangeOrigin, DataSource, Repositories, Repository, SessionStore } from "../contracts";
+import type { ChangeOrigin, DataSource, DeviceStore, Repositories, Repository, SessionStore } from "../contracts";
 import { IndexedDbPhotoStore } from "./photoStore";
 
-const KEY = "logistock:db:v1";
+const KEY = "logistock:db:v2";
+const DEVICE_KEY = "logistock:device";
 const SESSION_KEY = "logistock:session";
 const CHANNEL = "logistock-sync";
 
-const COLLECTIONS: Collection[] = [
-  "users", "needs", "offers", "contracts", "revisions", "advances", "locations", "transports", "traces", "checkins",
-  "deliveries", "partials", "declarations", "payments", "expenses", "debts", "notifications", "pending", "audit", "settings",
+export const COLLECTIONS: Collection[] = [
+  "users", "devices", "needs", "offers", "contracts", "revisions", "advances", "locations", "vehicles", "drivers", "pickups",
+  "transports", "traces", "checkins", "deliveries", "partials", "declarations", "payments", "expenses", "adjustments",
+  "commissions", "debts", "notifications", "pending", "audit", "outbox", "settings",
 ];
 
 export class LocalDataSource implements DataSource {
@@ -29,6 +32,20 @@ export class LocalDataSource implements DataSource {
     },
   };
 
+  /** Identifiant de cet appareil (navigateur), conservé d'une session à l'autre. */
+  readonly device: DeviceStore = {
+    id: () => {
+      let id = window.localStorage.getItem(DEVICE_KEY);
+      if (!id) {
+        id = `ap-${uuid()}`;
+        window.localStorage.setItem(DEVICE_KEY, id);
+      }
+      return id;
+    },
+  };
+
+  private seeding: Promise<void> | null = null;
+
   constructor() {
     const repos = {} as Record<Collection, Repository<Entity>>;
     for (const k of COLLECTIONS) repos[k] = this.makeRepo(k) as unknown as Repository<Entity>;
@@ -44,18 +61,35 @@ export class LocalDataSource implements DataSource {
     }
   }
 
-  private read(): Database {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) {
-      try {
-        return JSON.parse(raw) as Database;
-      } catch {
-        /* données corrompues : on repart du jeu de démo */
-      }
+  /** Crée la graine scellée (SHA-256 + Ed25519, calculs asynchrones) au premier lancement. */
+  private ensure(): Promise<void> {
+    if (!this.seeding) {
+      this.seeding = (async () => {
+        if (this.parse()) return;
+        const seed = await buildSealedSeed();
+        if (!this.parse()) window.localStorage.setItem(KEY, JSON.stringify(seed));
+      })();
     }
-    const seed = buildSeed();
-    window.localStorage.setItem(KEY, JSON.stringify(seed));
-    return seed;
+    return this.seeding;
+  }
+
+  private parse(): Database | null {
+    const raw = window.localStorage.getItem(KEY);
+    if (!raw) return null;
+    try {
+      const db = JSON.parse(raw) as Database;
+      // Données d'une version antérieure : collections manquantes ajoutées vides.
+      for (const k of COLLECTIONS) if (!Array.isArray(db[k])) (db[k] as unknown[]) = [];
+      return db.settings.length ? db : null;
+    } catch {
+      return null; // données corrompues : on repart du jeu de démo
+    }
+  }
+
+  private read(): Database {
+    const db = this.parse();
+    if (!db) throw new Error("Données locales indisponibles : rechargez la page.");
+    return db;
   }
 
   private write(db: Database) {
@@ -71,15 +105,17 @@ export class LocalDataSource implements DataSource {
   private makeRepo<K extends Collection>(k: K): Repository<EntityOf<K>> {
     type T = EntityOf<K>;
     return {
-      list: async () => [...(this.read()[k] as T[])],
-      get: async (id: Id) => (this.read()[k] as T[]).find((x) => x.id === id),
+      list: async () => (await this.ensure(), [...(this.read()[k] as T[])]),
+      get: async (id: Id) => (await this.ensure(), (this.read()[k] as T[]).find((x) => x.id === id)),
       create: async (item: T) => {
+        await this.ensure();
         const db = this.read();
         (db[k] as T[]).push(item);
         this.write(db);
         return item;
       },
       update: async (id: Id, patch: Partial<T>) => {
+        await this.ensure();
         const db = this.read();
         const list = db[k] as T[];
         const i = list.findIndex((x) => x.id === id);
@@ -92,6 +128,7 @@ export class LocalDataSource implements DataSource {
   }
 
   async snapshot(): Promise<Database> {
+    await this.ensure();
     return this.read();
   }
 
@@ -104,6 +141,6 @@ export class LocalDataSource implements DataSource {
 
   async reset() {
     await this.photos.clear();
-    this.write(buildSeed());
+    this.write(await buildSealedSeed());
   }
 }

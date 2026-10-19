@@ -2,17 +2,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MapPinPlus, Scale, Trash2, Truck, Warehouse } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MapPinPlus, Route, Scale, ShieldCheck, Trash2, Truck, Warehouse } from "lucide-react";
 import { askReason, fail, info, success } from "@/components/alerts";
 import { useApp } from "@/components/DataProvider";
 import { nameOf, WithId } from "@/components/domain";
 import { Timeline } from "@/components/Timeline";
+import { RouteMap } from "@/components/RouteMap";
 import { Badge, Button, Card, CardTitle, Empty, Field, Input, KV, Modal, PageSkeleton, PhotoInput, Select, Textarea } from "@/components/ui";
 import { currentPrice } from "@/lib/calc";
 import { dateTime, fcfa, fromLocalInput, group, prixKg, productLabel, toLocalInput, tonnes } from "@/lib/format";
 import { can, deleteMode } from "@/lib/permissions";
-import type { Transport, TraceType } from "@/lib/types";
-import { addTraceEvent, checkinLome, requestDelete, weighAndReceive } from "@/services/actions";
+import type { TraceEvent, Transport, TraceType } from "@/lib/types";
+import { verifyTraceChain } from "@/lib/integrity";
+import { addTraceEvent, checkinLome, receiveDelivery, requestDelete, weighAndReceive } from "@/services/actions";
+import { isOnline } from "@/services/network";
+
+const PENDING_SYNC = "Enregistré sur l'appareil, <b>en attente de synchronisation</b> : l'envoi se fera automatiquement au retour du réseau.";
 
 export default function Page() {
   return <WithId>{(id) => (id ? <Fiche id={id} /> : <PageSkeleton />)}</WithId>;
@@ -26,7 +31,8 @@ function Fiche({ id }: { id: string }) {
   const [modal, setModal] = useState<null | "etape" | "pointage" | "pesee">(null);
   const t = db.transports.find((x) => x.id === id);
   const c = t && db.contracts.find((x) => x.id === t.contractId);
-  if (!t || !c || t.deleted || (me.role === "fournisseur" && c.supplierId !== me.id))
+  const myDriver = db.drivers.find((d) => d.userId === me.id);
+  if (!t || !c || t.deleted || (me.role === "fournisseur" && c.supplierId !== me.id) || (me.role === "chauffeur" && t.driverId !== myDriver?.id))
     return <Empty icon={<Truck className="size-5" />} title="Transport introuvable" text="Il a peut-être été supprimé après validation du patron." action={<Link href="/transports/" className="text-[14px] font-semibold text-brand-700">Retour aux transports</Link>} />;
   const perms = db.settings[0]!.perms;
   const events = db.traces.filter((e) => e.transportId === t.id && !e.deleted);
@@ -34,6 +40,8 @@ function Fiche({ id }: { id: string }) {
   const delivery = db.deliveries.find((d) => d.transportId === t.id && !d.deleted);
   const dm = deleteMode(perms, me, "transports");
   const pendingDel = db.pending.find((p) => p.entityId === t.id && p.status === "en_attente");
+  const pickup = t.pickupId ? db.pickups.find((p) => p.id === t.pickupId) : undefined;
+  const staff = !["fournisseur", "chauffeur", "comptable"].includes(me.role);
 
   return (
     <>
@@ -51,9 +59,13 @@ function Fiche({ id }: { id: string }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {t.status === "en_route" && can(perms, me, "traces", "c") && <Button variant={me.role === "fournisseur" ? "primary" : "secondary"} icon={<MapPinPlus className="size-4" />} onClick={() => setModal("etape")} data-testid="btn-stage">Ajouter une étape</Button>}
-            {t.status === "en_route" && me.role !== "fournisseur" && can(perms, me, "pointages", "c") && <Button icon={<Warehouse className="size-4" />} onClick={() => setModal("pointage")} data-testid="btn-checkin">Pointer l&apos;arrivée à Lomé</Button>}
-            {t.status === "arrive" && me.role !== "fournisseur" && <Button icon={<Scale className="size-4" />} onClick={() => setModal("pesee")} data-testid="btn-weigh">Pesée et réception</Button>}
-            {me.role !== "fournisseur" && dm !== "interdite" && !pendingDel && (
+            {t.status === "en_route" && staff && can(perms, me, "pointages", "c") && <Button icon={<Warehouse className="size-4" />} onClick={() => setModal("pointage")} data-testid="btn-checkin">Pointer l&apos;arrivée à Lomé</Button>}
+            {t.status === "arrive" && !delivery && staff && can(perms, me, "pesees", "c") && <Button icon={<Scale className="size-4" />} onClick={() => setModal("pesee")} data-testid="btn-weigh">{can(perms, me, "pesees", "u") ? "Pesée et réception" : "Saisir la pesée"}</Button>}
+            {delivery?.status === "pesee" && staff && can(perms, me, "pesees", "u") && <Button icon={<CheckCircle2 className="size-4" />} data-testid="btn-receive" onClick={async () => {
+              const r = await run(() => receiveDelivery(me, delivery.id));
+              if (r) await success("Livraison réceptionnée", `Prix figé : <b>${prixKg(r.price)}</b>.<br/>Reste à livrer : ${tonnes(r.before.Q)} → <b>${tonnes(r.after.Q)}</b>.`);
+            }}>Réceptionner (figer le prix)</Button>}
+            {staff && dm !== "interdite" && !pendingDel && (
               <Button variant="ghost" icon={<Trash2 className="size-4" />} data-testid="btn-delete-transport" onClick={async () => {
                 const queued = dm === "confirmation";
                 const reason = await askReason({ title: queued ? "Demander la suppression ?" : "Supprimer ce transport ?", html: queued ? `La demande pour <b>${t.ref}</b> sera envoyée dans « Actions à confirmer ».` : `<b>${t.ref}</b> sera masqué mais conservé.`, confirmText: queued ? "Envoyer la demande" : "Supprimer", dark: true });
@@ -68,12 +80,16 @@ function Fiche({ id }: { id: string }) {
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <Card className="animate-in">
-          <CardTitle title="Timeline du lot" sub="Chaque étape est horodatée et chaînée à la précédente" />
+          <CardTitle title="Timeline du lot" sub="Chaque étape est horodatée et chaînée à la précédente" action={<ChainBadge events={events} />} />
           <Timeline events={events} threshold={db.settings[0]!.weightGapThresholdPct} done={t.status === "receptionne"} />
         </Card>
         <div className="space-y-6">
+          <Card className="animate-in" pad={false}>
+            <div className="p-5 pb-3"><CardTitle title="Carte du trajet" sub="Lieux connus de la table des lieux" icon={<Route className="size-[18px]" />} /></div>
+            <RouteMap places={[...events.map((e) => e.place), ...(pickup?.route.filter((r) => !r.passedAt).map((r) => r.place) ?? []), "Lomé · magasin central"]} passed={events.length} className="h-56" />
+          </Card>
           <Card className="animate-in">
-            <CardTitle title="Transport" />
+            <CardTitle title="Transport" sub={pickup ? <Link className="font-semibold text-brand-700 hover:underline" href={`/enlevements/fiche/?id=${pickup.id}`}>Ordre {pickup.ref}</Link> : undefined} />
             <KV items={[
               { k: "Véhicule", v: <span className="font-mono">{t.vehicle}</span> },
               { k: "Chauffeur", v: t.driver },
@@ -98,14 +114,15 @@ function Fiche({ id }: { id: string }) {
           )}
           {delivery && (
             <Card className="animate-in">
-              <CardTitle title="Réception" sub={`Ticket ${delivery.ticketNo}`} icon={<Scale className="size-[18px]" />} />
+              <CardTitle title={delivery.status === "pesee" ? "Pesée (à réceptionner)" : "Réception"} sub={`Ticket ${delivery.ticketNo} · pesé par ${nameOf(db, delivery.weighedBy)}`} icon={<Scale className="size-[18px]" />} />
               <KV items={[
                 { k: "Poids brut", v: `${group(delivery.grossKg)} kg` },
                 { k: "Tare", v: `${group(delivery.tareKg)} kg` },
                 { k: "Poids net", v: tonnes(delivery.netKg) },
                 { k: "Sacs", v: String(delivery.bags) },
-                { k: "Prix figé", v: prixKg(delivery.price) },
-                { k: "Valeur", v: fcfa(delivery.value) },
+                ...(delivery.humidity !== undefined ? [{ k: "Humidité", v: `${delivery.humidity} %` }] : []),
+                { k: "Prix figé", v: delivery.status === "pesee" ? "À la réception" : prixKg(delivery.price) },
+                { k: "Valeur", v: delivery.status === "pesee" ? "—" : fcfa(delivery.value) },
               ]} />
             </Card>
           )}
@@ -118,11 +135,24 @@ function Fiche({ id }: { id: string }) {
   );
 }
 
+function ChainBadge({ events }: { events: TraceEvent[] }) {
+  const [ok, setOk] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void verifyTraceChain(events).then((r) => live && setOk(r.ok));
+    return () => {
+      live = false;
+    };
+  }, [events]);
+  if (ok === null) return null;
+  return <Badge tone={ok ? "ok" : "err"}><ShieldCheck className="mr-1 inline size-3" />{ok ? "Chaîne SHA-256 intacte" : "Chaîne altérée"}</Badge>;
+}
+
 function StageModal({ t, onClose }: { t: Transport; onClose: () => void }) {
   const { db, me } = useApp();
   const places = db.locations.filter((l) => !l.deleted && l.type !== "destination");
   const last = db.traces.filter((e) => e.transportId === t.id).sort((a, b) => b.order - a.order)[0];
-  const [f, setF] = useState({ type: "etape" as TraceType, place: "Kaboli", free: "", save: true, at: toLocalInput(new Date().toISOString()), tons: String((last?.qtyKg ?? t.tonsKg) / 1000), receiver: me.name, role: me.role === "gestionnaire" ? "Gestionnaire délégué (sur place)" : me.role === "fournisseur" ? "Fournisseur" : "Patron", comment: "", photo: undefined as string | undefined });
+  const [f, setF] = useState({ type: "etape" as TraceType, place: "Kaboli", free: "", save: true, at: toLocalInput(new Date().toISOString()), tons: String((last?.qtyKg ?? t.tonsKg) / 1000), receiver: me.name, role: me.role === "gestionnaire" ? "Gestionnaire délégué (sur place)" : ({ fournisseur: "Fournisseur", chauffeur: "Chauffeur", magasinier: "Magasinier", admin: "Administrateur", patron: "Patron", comptable: "Comptable", gestionnaire: "" } as const)[me.role], comment: "", photo: undefined as string | undefined });
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (f.place === "Kaboli" && me.role !== "gestionnaire") {
@@ -139,7 +169,7 @@ function StageModal({ t, onClose }: { t: Transport; onClose: () => void }) {
         try {
           const r = await addTraceEvent(me, t.id, { type: f.type, place: f.place === "__libre" ? f.free : f.place, saveLocation: f.place === "__libre" && f.save, at: fromLocalInput(f.at), qtyKg: Math.round(Number(f.tons.replace(",", ".")) * 1000), receiver: f.receiver, receiverRole: f.role, comment: f.comment || undefined, photo: f.photo });
           onClose();
-          await success("Étape enregistrée", r.gap ? "Un écart de quantité avec le chargement est signalé sur la timeline et au patron." : "Elle apparaît dans la timeline du lot.");
+          await success("Étape enregistrée", `${r.gap ? "Un écart de quantité avec le chargement est signalé sur la timeline et au patron." : "Elle apparaît dans la timeline du lot."}${isOnline() ? "" : `<br/>${PENDING_SYNC}`}`);
         } catch (e) { await fail(e); } finally { setBusy(false); }
       }}>Enregistrer l&apos;étape</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -175,7 +205,7 @@ function StageModal({ t, onClose }: { t: Transport; onClose: () => void }) {
 function CheckinModal({ t, onClose }: { t: Transport; onClose: () => void }) {
   const { db, me } = useApp();
   const c = db.contracts.find((x) => x.id === t.contractId)!;
-  const [f, setF] = useState({ plate: t.vehicle, driver: t.driver, at: toLocalInput(new Date().toISOString()), tons: String(t.tonsKg / 1000), cost: "", beneficiary: t.carrier });
+  const [f, setF] = useState({ plate: t.vehicle, driver: t.driver, at: toLocalInput(new Date().toISOString()), tons: String(t.tonsKg / 1000), cost: "", beneficiary: t.carrier, photo: undefined as string | undefined });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const mismatch = f.plate.replace(/-/g, "").toUpperCase() !== t.vehicle.replace(/-/g, "");
@@ -184,9 +214,9 @@ function CheckinModal({ t, onClose }: { t: Transport; onClose: () => void }) {
       footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button loading={busy} data-testid="checkin-submit" onClick={async () => {
         setBusy(true);
         try {
-          const r = await checkinLome(me, t.id, { plateSeen: f.plate, driver: f.driver, at: fromLocalInput(f.at), tonsAnnouncedKg: Math.round(Number(f.tons.replace(",", ".")) * 1000), cost: Number(f.cost || 0), beneficiary: f.beneficiary });
+          const r = await checkinLome(me, t.id, { plateSeen: f.plate, driver: f.driver, at: fromLocalInput(f.at), tonsAnnouncedKg: Math.round(Number(f.tons.replace(",", ".")) * 1000), cost: Number(f.cost || 0), beneficiary: f.beneficiary, photo: f.photo });
           onClose();
-          await success("Véhicule pointé à Lomé", `Coût de transport débité ${r.debitedOn === "charges_patron" ? "dans les <b>charges du patron</b>" : "sur le <b>solde du fournisseur</b>"}.${r.mismatch ? "<br/>Écart de matricule signalé au patron." : ""}<br/>Étape suivante : pesée et réception.`);
+          await success("Véhicule pointé à Lomé", `Coût de transport débité ${r.debitedOn === "charges_patron" ? "dans les <b>charges du patron</b>" : "sur le <b>solde du fournisseur</b>"}.${r.mismatch ? "<br/>Écart de matricule signalé au patron." : ""}<br/>Étape suivante : pesée et réception.${isOnline() ? "" : `<br/>${PENDING_SYNC}`}`);
         } catch (e) { await fail(e); } finally { setBusy(false); }
       }}>Pointer et débiter les coûts</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -198,6 +228,7 @@ function CheckinModal({ t, onClose }: { t: Transport; onClose: () => void }) {
         <Field label="Tonnes annoncées"><Input inputMode="decimal" value={f.tons} onChange={set("tons")} /></Field>
         <Field label="Coût de transport (FCFA)"><Input inputMode="numeric" value={f.cost} onChange={set("cost")} placeholder="ex. 450000" name="cost" /></Field>
         <Field label="Bénéficiaire"><Input value={f.beneficiary} onChange={set("beneficiary")} /></Field>
+        <div className="sm:col-span-2"><PhotoInput label="Photo du véhicule à l'arrivée (facultative)" value={f.photo} onChange={(photo) => setF({ ...f, photo })} /></div>
       </div>
       <div className="mt-5 rounded-2xl border border-line bg-canvas p-4 text-[13.5px]">
         <div className="font-semibold">Règle du contrat {c.ref} : transport {c.transportPaidByPatron ? "payé par le patron" : "non payé par le patron"}</div>
@@ -211,31 +242,38 @@ function WeighModal({ t, onClose }: { t: Transport; onClose: () => void }) {
   const { db, me } = useApp();
   const c = db.contracts.find((x) => x.id === t.contractId)!;
   const price = currentPrice(db, c);
-  const [f, setF] = useState({ gross: String(t.tonsKg + Math.round(t.tonsKg / 50)), tare: String(Math.round(t.tonsKg / 50)), bags: String(Math.round(t.tonsKg / 50)), ticket: `PE-${String(Math.floor(1000 + Math.random() * 8999))}` });
+  const canReceive = can(db.settings[0]!.perms, me, "pesees", "u");
+  const [f, setF] = useState({ gross: String(t.tonsKg + Math.round(t.tonsKg / 50)), tare: String(Math.round(t.tonsKg / 50)), bags: String(Math.round(t.tonsKg / 50)), ticket: `PE-${String(Math.floor(1000 + Math.random() * 8999))}`, humidity: "", photo: undefined as string | undefined });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const net = Number(f.gross) - Number(f.tare);
+  const online = isOnline();
   return (
-    <Modal open onClose={onClose} title="Pesée et réception" sub={`${t.ref} · ${tonnes(t.tonsKg)} chargées`}
+    <Modal open onClose={onClose} title={canReceive && online ? "Pesée et réception" : "Pesée"} sub={`${t.ref} · ${tonnes(t.tonsKg)} chargées`}
       footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button loading={busy} data-testid="weigh-submit" onClick={async () => {
         setBusy(true);
         try {
-          const r = await weighAndReceive(me, t.id, { grossKg: Number(f.gross), tareKg: Number(f.tare), bags: Number(f.bags), ticketNo: f.ticket });
+          const r = await weighAndReceive(me, t.id, { grossKg: Number(f.gross), tareKg: Number(f.tare), bags: Number(f.bags), ticketNo: f.ticket, humidity: f.humidity ? Number(f.humidity.replace(",", ".")) : undefined, ticketPhoto: f.photo });
           onClose();
-          await success("Livraison réceptionnée", `${tonnes(r.delivery.netKg)} valorisées <b>${fcfa(r.delivery.value)}</b> au prix figé de ${prixKg(r.delivery.price)}.<br/>Reste à livrer : ${tonnes(r.before.Q)} → <b>${tonnes(r.after.Q)}</b>.`);
+          const gap = r.gap ? `<br/>Écart de ${tonnes(r.gapKg)} avec le chargement : alerte envoyée au patron et au magasinier.` : "";
+          if (r.received) await success("Livraison réceptionnée", `${tonnes(r.delivery.netKg)} valorisées <b>${fcfa(r.delivery.netKg * r.price)}</b> au prix figé de ${prixKg(r.price)}.<br/>Reste à livrer : ${tonnes(r.before.Q)} → <b>${tonnes(r.after.Q)}</b>.${gap}`);
+          else await success("Pesée enregistrée", `Statut « pesée » : ${tonnes(r.delivery.netKg)} nettes.${online ? " La réception (prix figé) sera validée par le patron ou un gestionnaire." : `<br/>${PENDING_SYNC} La réception sera validée au retour du réseau.`}${gap}`);
         } catch (e) { await fail(e); } finally { setBusy(false); }
-      }}>Réceptionner</Button></>}>
+      }}>{canReceive && online ? "Peser et réceptionner" : "Enregistrer la pesée"}</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Poids brut (kg)"><Input inputMode="numeric" value={f.gross} onChange={set("gross")} name="gross" /></Field>
         <Field label="Tare (kg)"><Input inputMode="numeric" value={f.tare} onChange={set("tare")} name="tare" /></Field>
-        <Field label="Nombre de sacs"><Input inputMode="numeric" value={f.bags} onChange={set("bags")} /></Field>
-        <Field label="Ticket de pesée"><Input value={f.ticket} onChange={set("ticket")} /></Field>
+        <Field label="Nombre de sacs"><Input inputMode="numeric" value={f.bags} onChange={set("bags")} name="bags" /></Field>
+        <Field label="Ticket de pesée"><Input value={f.ticket} onChange={set("ticket")} name="ticket" /></Field>
+        <Field label="Humidité (%)" hint="Facultatif, utile pour le cacao."><Input inputMode="decimal" value={f.humidity} onChange={set("humidity")} placeholder="ex. 7,5" /></Field>
+        <div><PhotoInput label="Photo du ticket (facultative)" value={f.photo} onChange={(photo) => setF({ ...f, photo })} /></div>
       </div>
       <div className="num mt-5 grid grid-cols-3 gap-3 rounded-2xl bg-ink p-4 text-white">
         <div><div className="text-[11.5px] text-white/55">Poids net</div><div className="text-[16px] font-bold">{net > 0 ? tonnes(net) : "—"}</div></div>
         <div><div className="text-[11.5px] text-white/55">Prix en vigueur</div><div className="text-[16px] font-bold">{prixKg(price)}</div></div>
         <div><div className="text-[11.5px] text-white/55">Valeur</div><div className="text-[16px] font-bold">{net > 0 ? fcfa(net * price) : "—"}</div></div>
       </div>
+      {!online && <p className="mt-3 text-[12.5px] text-muted">Hors ligne : la pesée est enregistrée sur l&apos;appareil ; la réception (prix figé) exige le réseau.</p>}
     </Modal>
   );
 }

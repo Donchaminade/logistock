@@ -1,7 +1,7 @@
 // Implémentation HTTP (à brancher sur l'API Spring Boot, préfixe /api/v1 — cahier des charges §6.4).
 // Activée quand NEXT_PUBLIC_API_URL est défini. Les écrans et les services ne changent pas.
 import type { Collection, Database, Entity, EntityOf, Id } from "@/lib/types";
-import type { ChangeOrigin, DataSource, PhotoStore, Repositories, Repository, SessionStore } from "../contracts";
+import type { ChangeOrigin, DataSource, DeviceStore, PhotoStore, Repositories, Repository, SessionStore } from "../contracts";
 
 /** Correspondance collection → ressource REST. À ajuster selon les contrôleurs Spring Boot. */
 export const ENDPOINTS: Record<Collection, string> = {
@@ -10,6 +10,8 @@ export const ENDPOINTS: Record<Collection, string> = {
   checkins: "arrival-checkins", deliveries: "deliveries", partials: "partial-deliveries",
   declarations: "declarations", payments: "repayments", expenses: "expenses", debts: "debts",
   notifications: "notifications", pending: "pending-actions", audit: "audit-log", settings: "settings",
+  devices: "devices", vehicles: "vehicles", drivers: "drivers", pickups: "pickup-orders", adjustments: "adjustments",
+  commissions: "commissions", outbox: "sync/outbox",
 };
 
 export class HttpDataSource implements DataSource {
@@ -78,4 +80,15 @@ export class HttpDataSource implements DataSource {
     },
   };
   private sessionUser: Id | null = null;
+
+  readonly device: DeviceStore = {
+    id: () => {
+      let id = window.localStorage.getItem("logistock:device");
+      if (!id) {
+        id = `ap-${crypto.randomUUID()}`;
+        window.localStorage.setItem("logistock:device", id);
+      }
+      return id;
+    },
+  };
 }

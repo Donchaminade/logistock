@@ -1,19 +1,25 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronDown, FileCheck2, Lock, Phone, Route, Scale } from "lucide-react";
+import { ArrowRight, ChevronDown, FileCheck2, KeyRound, Lock, Phone, Route, Scale, WifiOff } from "lucide-react";
 import { askText, fail, toast } from "@/components/alerts";
 import { useData } from "@/components/DataProvider";
 import { Logo } from "@/components/Logo";
 import { Avatar, Button, cx, Field, Input } from "@/components/ui";
 import { DEMO_ACCOUNTS, OTHER_ACCOUNTS } from "@/lib/seed";
 import { roleLabel } from "@/lib/format";
-import { changePassword, login } from "@/services/actions";
+import { changePassword, LockedError, login, pinUsers, unlockWithPin } from "@/services/actions";
+import { isOnline, onNetworkChange } from "@/services/network";
+import type { User } from "@/lib/types";
 
 const ROLE_DESC = {
   patron: "Tableau de bord complet, validations, droits",
+  admin: "Comptes, paramètres, référentiels, journal",
   gestionnaire: "Crée sans supprimer, réception à Kaboli",
-  fournisseur: "App mobile : contrats, déclarations, preuves",
+  fournisseur: "Mobile : contrats, déclarations, relevé",
+  magasinier: "Pointage, pesées, réception, stocks",
+  chauffeur: "Mobile : trajets, étapes, arrivée avec photo",
+  comptable: "Paiements, dettes, commissions, exports",
 } as const;
 
 export default function LoginPage() {
@@ -23,10 +29,36 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [more, setMore] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [pinList, setPinList] = useState<User[]>([]);
 
   useEffect(() => {
     if (ready && me) router.replace("/accueil/");
   }, [ready, me, router]);
+  useEffect(() => {
+    setOnline(isOnline());
+    return onNetworkChange(setOnline);
+  }, []);
+  useEffect(() => {
+    if (ready) void pinUsers().then(setPinList);
+  }, [ready, db]);
+
+  async function doPin(u: User) {
+    const pin = await askText({ title: `Code PIN de ${u.name.split(" ")[0]}`, html: "Appareil déjà autorisé : saisissez votre code PIN (4 à 6 chiffres).", input: "password", placeholder: "Code PIN", confirmText: "Déverrouiller", validate: (v) => (/^\d{4,6}$/.test(v) ? undefined : "4 à 6 chiffres.") });
+    if (!pin) return;
+    setBusy(`pin-${u.id}`);
+    try {
+      const user = await unlockWithPin(u.id, pin);
+      await refresh();
+      toast(`Bienvenue, ${user.name.split(" ")[0]}`, isOnline() ? "Déverrouillé par code PIN" : "Déverrouillé hors ligne : données en cache");
+      router.replace("/accueil/");
+    } catch (e) {
+      await fail(e, "Déverrouillage refusé");
+      void pinUsers().then(setPinList);
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function doLogin(p: string, pw: string, key: string) {
     setBusy(key);
@@ -47,7 +79,7 @@ export default function LoginPage() {
       toast(`Bienvenue, ${u.name.split(" ")[0]}`, roleLabel[u.role]);
       router.replace("/accueil/");
     } catch (e) {
-      await fail(e, "Connexion refusée");
+      await fail(e, e instanceof LockedError ? "Compte bloqué" : "Connexion refusée");
     } finally {
       setBusy(null);
     }
@@ -88,6 +120,24 @@ export default function LoginPage() {
           <div className="mb-10 lg:hidden"><Logo sub="Préfinancement soja et cacao" /></div>
           <h2 className="text-[26px] font-bold tracking-[-0.025em]">Connexion</h2>
           <p className="mt-1.5 text-[14.5px] text-muted">Accédez à votre espace avec votre numéro de téléphone.</p>
+          {!online && (
+            <div className="mt-5 flex gap-3 rounded-2xl bg-ink p-4 text-[13.5px] text-white" data-testid="login-offline">
+              <WifiOff className="mt-0.5 size-4 shrink-0" />
+              <span>Hors ligne : la connexion par mot de passe exige le réseau. Un compte déjà autorisé sur cet appareil peut se déverrouiller avec son code PIN.</span>
+            </div>
+          )}
+          {pinList.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-line bg-white p-4" data-testid="pin-users">
+              <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold"><KeyRound className="size-4 text-brand-600" /> Déverrouiller avec un code PIN</div>
+              <div className="flex flex-wrap gap-2">
+                {pinList.map((u) => (
+                  <button key={u.id} data-testid={`pin-${u.id}`} onClick={() => void doPin(u)} disabled={!!busy} className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 text-[13px] font-semibold hover:border-brand-600">
+                    <Avatar name={u.name} size="sm" /> {u.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <form
             className="mt-7 space-y-4"
@@ -116,7 +166,7 @@ export default function LoginPage() {
             <span className="h-px flex-1 bg-line" /> Connexion rapide · démo <span className="h-px flex-1 bg-line" />
           </div>
 
-          <div className="space-y-2.5">
+          <div className="grid gap-2.5">
             {DEMO_ACCOUNTS.map((a) => (
               <button
                 key={a.id}
@@ -127,7 +177,7 @@ export default function LoginPage() {
                   void doLogin(a.phone, a.password, a.id);
                 }}
                 disabled={!!busy}
-                className="group flex w-full items-center gap-3.5 rounded-2xl border border-line bg-white p-3.5 text-left transition-colors hover:border-brand-600 hover:bg-brand-50/40 disabled:opacity-60"
+                className="group flex w-full items-center gap-3.5 rounded-2xl border border-line bg-white p-3 text-left transition-colors hover:border-brand-600 hover:bg-brand-50/40 disabled:opacity-60"
               >
                 <Avatar name={a.name} />
                 <div className="min-w-0 flex-1">
@@ -165,7 +215,7 @@ export default function LoginPage() {
           )}
 
           <p className="mt-8 rounded-xl bg-canvas px-4 py-3 text-[12.5px] leading-relaxed text-muted">
-            <span className="font-semibold text-ink">Astuce de présentation :</span> ouvrez un rôle par onglet. Les actions de l’un apparaissent en direct chez les autres, avec une notification.
+            <span className="font-semibold text-ink">Astuce de présentation :</span> mots de passe affichés dans le README. Ouvrez un rôle par onglet. Les actions de l’un apparaissent en direct chez les autres, avec une notification.
           </p>
         </div>
       </main>

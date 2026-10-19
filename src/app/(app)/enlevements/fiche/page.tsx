@@ -42,7 +42,7 @@ function Fiche({ id }: { id: string }) {
                 <li key={s.id} className="rounded-2xl border border-line p-4" data-testid={`stop-${s.id}`}>
                   <div className="flex flex-wrap items-center gap-3">
                     {s.confirmedAt ? <CheckCircle2 className="size-5 text-brand-600" /> : <Circle className="size-5 text-subtle" />}
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-[13rem] flex-1">
                       <div className="font-semibold">{nameOf(db, s.supplierId)}</div>
                       <div className="text-[13px] text-muted">{db.contracts.find((c) => c.id === s.contractId)?.ref} · prévu {tonnes(s.plannedKg)}{s.confirmedAt ? ` · chargé ${tonnes(s.loadedKg ?? 0)} (${s.bags} sacs) le ${dateTime(s.confirmedAt)}` : ""}</div>
                     </div>

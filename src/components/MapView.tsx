@@ -62,7 +62,8 @@ export function MapView({ markers, lines = [], className, testId }: { markers: M
       }
       for (const mk of markers) {
         L.circleMarker([mk.lat, mk.lng], { radius: mk.radius ?? 6, color: "#FFFFFF", weight: 2, fillColor: COLORS[mk.tone ?? "blue"], fillOpacity: 1 })
-          .bindTooltip(`<b>${mk.label}</b>${mk.sub ? `<br/>${mk.sub}` : ""}`, { direction: "top" })
+          .bindTooltip(markers.length <= 10 ? mk.label : `<b>${mk.label}</b>${mk.sub ? `<br/>${mk.sub}` : ""}`, markers.length <= 10 ? { permanent: true, direction: "right", offset: [8, 0], className: "ls-map-label" } : { direction: "top" })
+          .bindPopup(`<b>${mk.label}</b>${mk.sub ? `<br/>${mk.sub}` : ""}`)
           .addTo(m);
       }
       const pts: [number, number][] = [...markers.map((x) => [x.lat, x.lng] as [number, number]), ...lines.flatMap((l) => l.points)];

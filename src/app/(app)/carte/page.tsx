@@ -43,7 +43,7 @@ export default function Carte() {
               <Link href={`/enlevements/fiche/?id=${p.id}`} className="font-semibold text-brand-700 hover:underline">{p.ref}</Link>
               <span className="font-mono text-[13px]">{p.vehicle}</span>
               <PickupBadge db={db} p={p} />
-              <span className="text-[13px] text-muted">{pickupPlaces(db, p).places.join(" → ")}</span>
+              <span className="text-[13px] text-muted">{pickupPlaces(db, p).places.filter((x, i, a) => x !== a[i - 1]).join(" → ")}</span>
             </li>
           ))}
         </ul>

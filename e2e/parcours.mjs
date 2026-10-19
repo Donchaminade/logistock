@@ -269,12 +269,12 @@ await shot(M, "12-patron-accueil-mobile");
 ok("Bottom nav patron : badge « À confirmer » présent", (await M.locator("nav[aria-label='Navigation principale']").innerText().then(N)).includes("À confirmer"));
 await M.goto(BASE + "/contrats/fiche/?id=ct-009");
 await M.getByTestId("btn-settle").click();
-await M.getByRole("button", { name: "Passer en dette" }).click();
+await M.getByRole("button", { name: "Clore : dette" }).click();
 await M.getByRole("button", { name: "Clore et passer en dette" }).click();
 await confirmSwal(M);
 await M.waitForTimeout(400);
 await M.goto(BASE + "/finances/");
-await M.getByRole("button", { name: /Dettes/ }).click();
+await M.getByRole("button", { name: /^Dettes\s*\d*$/ }).click();
 ok("Solde de 180 000 FCFA passé en dette", (await M.locator("main").innerText().then(N)).includes("180 000"));
 await shot(M, "13-patron-dettes-mobile");
 

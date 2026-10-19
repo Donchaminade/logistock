@@ -116,3 +116,7 @@ body.swal2-toast-shown .swal2-container, .swal2-container:has(> .swal2-toast) { 
   .no-print { display: none !important; }
   body { background: #fff; }
 }
+
+/* Carte : étiquettes de lieux sobres (noir sur blanc, sans ombre) */
+.leaflet-tooltip.ls-map-label { background: #fff; border: 1px solid #e3e6ec; box-shadow: none; border-radius: 6px; padding: 1px 6px; font-family: inherit; font-weight: 600; font-size: 11px; line-height: 1.5; color: #0b0d12; }
+.leaflet-tooltip.ls-map-label::before { display: none; }

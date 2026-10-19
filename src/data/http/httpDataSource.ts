@@ -76,7 +76,10 @@ export class HttpDataSource implements DataSource {
     get: () => this.sessionUser,
     set: (id) => {
       this.sessionUser = id;
-      if (!id) this.token = null;
+      if (!id) {
+        this.token = null;
+        this.listeners.forEach((l) => l("local"));
+      }
     },
   };
   private sessionUser: Id | null = null;

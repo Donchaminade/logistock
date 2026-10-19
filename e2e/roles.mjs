@@ -288,6 +288,35 @@ await PI.waitForURL("**/accueil/");
 ok("Déverrouillage par PIN : accès à l'espace chauffeur", PI.url().endsWith("/accueil/"));
 await PI.close();
 
+// ——— Déconnexion : confirmer doit revenir à l'écran de connexion, sans rebond vers l'accueil ———
+const OUT = await open("logout", DESK);
+await login(OUT, "patron");
+await OUT.getByTestId("logout-header").click();
+await OUT.getByRole("button", { name: "Annuler" }).click();
+await OUT.waitForTimeout(400);
+ok("Annuler la déconnexion laisse la session ouverte", OUT.url().includes("/accueil/") && (await OUT.evaluate(() => sessionStorage.getItem("logistock:session"))) !== null);
+await OUT.getByTestId("logout-header").click();
+await confirmSwal(OUT);
+await OUT.getByRole("heading", { name: "Connexion" }).waitFor();
+await OUT.waitForTimeout(800);
+ok("Déconnexion (en-tête) : session effacée, écran de connexion", (await OUT.evaluate(() => sessionStorage.getItem("logistock:session"))) === null && !OUT.url().includes("accueil"));
+await login(OUT, "patron");
+await OUT.goto(BASE + "/profil/");
+await OUT.getByTestId("logout-profile").click();
+await confirmSwal(OUT);
+await OUT.getByRole("heading", { name: "Connexion" }).waitFor();
+await OUT.waitForTimeout(800);
+ok("Déconnexion (profil) : retour à la connexion", (await OUT.evaluate(() => sessionStorage.getItem("logistock:session"))) === null && !OUT.url().includes("accueil"));
+await OUT.setViewportSize(MOB);
+await login(OUT, "fournisseur");
+await OUT.goto(BASE + "/profil/");
+await OUT.getByTestId("logout-profile").click();
+await confirmSwal(OUT);
+await OUT.getByRole("heading", { name: "Connexion" }).waitFor();
+await OUT.waitForTimeout(800);
+ok("Déconnexion mobile (profil) : retour à la connexion", (await OUT.evaluate(() => sessionStorage.getItem("logistock:session"))) === null && !OUT.url().includes("accueil"));
+await OUT.close();
+
 // ——— 10. PWA : service worker, rechargement réellement hors ligne ———
 const ctx2 = await newCtx();
 const W = await open("pwa", MOB, ctx2);

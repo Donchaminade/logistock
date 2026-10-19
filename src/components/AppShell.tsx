@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, CloudOff, Lock, LogOut, RefreshCw, RotateCcw, Wifi } from "lucide-react";
-import { logout, resetDemo } from "@/services/actions";
+import { resetDemo } from "@/services/actions";
 import { roleLabel } from "@/lib/format";
 import { choose, confirm, toast } from "./alerts";
 import { forMe, useData } from "./DataProvider";
@@ -18,6 +18,13 @@ import type { Database, User } from "@/lib/types";
 function isActive(path: string, href: string) {
   if (href === "/accueil/") return path.startsWith("/accueil");
   return path.startsWith(href.replace(/\/$/, ""));
+}
+
+export async function confirmLogout(signOut: () => void, router: ReturnType<typeof useRouter>) {
+  const ok = await confirm({ title: "Se déconnecter ?", confirmText: "Déconnexion", dark: true });
+  if (!ok) return;
+  signOut();
+  router.replace("/");
 }
 
 export async function confirmReset(router: ReturnType<typeof useRouter>) {
@@ -35,7 +42,7 @@ export async function confirmReset(router: ReturnType<typeof useRouter>) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { db, me, ready } = useData();
+  const { db, me, ready, signOut } = useData();
   const path = usePathname();
   const router = useRouter();
 
@@ -124,14 +131,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Avatar name={me.name} size="sm" />
           </Link>
           <button
-            onClick={async () => {
-              if (await confirm({ title: "Se déconnecter ?", confirmText: "Déconnexion", dark: true })) {
-                logout();
-                router.replace("/");
-              }
-            }}
+            onClick={() => void confirmLogout(signOut, router)}
             className="hidden size-10 place-items-center rounded-full text-muted hover:bg-canvas hover:text-ink lg:grid"
             aria-label="Déconnexion"
+            data-testid="logout-header"
           >
             <LogOut className="size-[18px]" />
           </button>

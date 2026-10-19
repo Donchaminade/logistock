@@ -1,17 +1,17 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { KeyRound, LogOut, MonitorSmartphone, RotateCcw } from "lucide-react";
-import { confirmReset } from "@/components/AppShell";
-import { askText, confirm } from "@/components/alerts";
+import { confirmLogout, confirmReset } from "@/components/AppShell";
+import { askText } from "@/components/alerts";
 import { useApp } from "@/components/DataProvider";
 import { Avatar, Button, Card, KV, PageHeader } from "@/components/ui";
 import { date, roleLabel } from "@/lib/format";
 import { displayPhone } from "@/lib/identity";
-import { changePassword, logout } from "@/services/actions";
+import { changePassword } from "@/services/actions";
 import { PinCard } from "@/components/PinCard";
 
 export default function Profil() {
-  const { me, run } = useApp();
+  const { me, run, signOut } = useApp();
   const router = useRouter();
   return (
     <>
@@ -32,9 +32,7 @@ export default function Profil() {
           if (p) await run(() => changePassword(me, p), "Mot de passe modifié");
         }}>Changer le mot de passe</Button>
         <Button variant="secondary" size="lg" icon={<RotateCcw className="size-4" />} onClick={() => confirmReset(router)} data-testid="reset-demo">Réinitialiser la démo</Button>
-        <Button variant="dark" size="lg" icon={<LogOut className="size-4" />} onClick={async () => {
-          if (await confirm({ title: "Se déconnecter ?", confirmText: "Déconnexion", dark: true })) { logout(); router.replace("/"); }
-        }}>Déconnexion</Button>
+        <Button variant="dark" size="lg" icon={<LogOut className="size-4" />} data-testid="logout-profile" onClick={() => void confirmLogout(signOut, router)}>Déconnexion</Button>
       </div>
       <PinCard />
       <Card className="mt-4 animate-in">

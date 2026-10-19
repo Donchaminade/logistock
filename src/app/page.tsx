@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, FileCheck2, KeyRound, Lock, Route, Scale, WifiOff } from "lucide-react";
 import { askText, fail, toast } from "@/components/alerts";
 import { useData } from "@/components/DataProvider";
+import { dataSource } from "@/data";
 import { Logo } from "@/components/Logo";
 import { Avatar, Button, cx, Field, Input } from "@/components/ui";
 import { DEMO_ACCOUNTS, OTHER_ACCOUNTS } from "@/lib/seed";
@@ -33,7 +34,9 @@ export default function LoginPage() {
   const [pinList, setPinList] = useState<User[]>([]);
 
   useEffect(() => {
-    if (ready && me) router.replace("/accueil/");
+    // `me` peut encore être l'utilisateur précédent le temps d'un rendu : on ne revient
+    // dans l'application que si la session de l'onglet est réellement ouverte.
+    if (ready && me && dataSource().session.get()) router.replace("/accueil/");
   }, [ready, me, router]);
   useEffect(() => {
     setOnline(isOnline());

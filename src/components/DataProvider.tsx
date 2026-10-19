@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from "next/navigation";
 import { dataSource } from "@/data";
 import type { AppNotification, Database, User } from "@/lib/types";
+import { logout } from "@/services/auth";
 import { syncOutbox } from "@/services/core";
 import { isOnline, onNetworkChange } from "@/services/network";
 import { fail, toast } from "./alerts";
@@ -12,6 +13,8 @@ interface Ctx {
   me: User | null;
   ready: boolean;
   refresh: () => Promise<void>;
+  /** Ferme la session de cet onglet et retire l'utilisateur de l'état affiché. */
+  signOut: () => void;
   /** Exécute une action métier : erreurs affichées par SweetAlert2, toast de succès optionnel. */
   run: <T>(fn: () => Promise<T>, okTitle?: string, okText?: string) => Promise<T | undefined>;
 }
@@ -72,6 +75,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return onNetworkChange((o) => o && void sync());
   }, [refresh]);
 
+  const signOut = useCallback(() => {
+    logout();
+    setMe(null);
+  }, []);
+
   const run = useCallback(async <T,>(fn: () => Promise<T>, okTitle?: string, okText?: string) => {
     try {
       const r = await fn();
@@ -83,7 +91,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(() => ({ db, me, ready, refresh, run }), [db, me, ready, refresh, run]);
+  const value = useMemo(() => ({ db, me, ready, refresh, signOut, run }), [db, me, ready, refresh, signOut, run]);
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }
 

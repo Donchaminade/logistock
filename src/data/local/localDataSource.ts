@@ -40,8 +40,13 @@ export class LocalDataSource implements DataSource {
   readonly session: SessionStore = {
     get: () => (typeof window === "undefined" ? null : window.sessionStorage.getItem(SESSION_KEY)),
     set: (id) => {
+      if (typeof window === "undefined") return;
       if (id) window.sessionStorage.setItem(SESSION_KEY, id);
-      else window.sessionStorage.removeItem(SESSION_KEY);
+      else {
+        window.sessionStorage.removeItem(SESSION_KEY);
+        // La session n'est pas dans la base : sans cet avis, l'écran reste sur l'utilisateur précédent.
+        this.emit("local");
+      }
     },
   };
 

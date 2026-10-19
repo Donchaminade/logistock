@@ -66,7 +66,7 @@ function Fiche({ id }: { id: string }) {
           </div>
         </div>
       </div>
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <Card className="animate-in">
           <CardTitle title="Timeline du lot" sub="Chaque étape est horodatée et chaînée à la précédente" />
           <Timeline events={events} threshold={db.settings[0]!.weightGapThresholdPct} done={t.status === "receptionne"} />

@@ -49,6 +49,22 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   doc.rect(0, 0, W, 34, "F");
   doc.setFillColor(...blue);
   doc.roundedRect(16, 10, 14, 14, 3, 3, "F");
+  // Marque du logo (même dessin que public/logo.svg, échelle 14/32)
+  {
+    const k = 14 / 32, X = (v: number) => 16 + v * k, Y = (v: number) => 10 + v * k;
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(3 * k);
+    doc.setLineCap("round");
+    doc.setLineJoin("round");
+    doc.lines([[0, 14 * k], [6 * k, 0]], X(9), Y(8), [1, 1], "S", false);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(X(17.5), Y(15), 6 * k, 7 * k, 1.5 * k, 1.5 * k, "F");
+    doc.setFillColor(143, 167, 236);
+    doc.roundedRect(X(17.5), Y(8), 6 * k, 5 * k, 1.5 * k, 1.5 * k, "F");
+    doc.setLineWidth(0.2);
+    doc.setLineCap("butt");
+    doc.setLineJoin("miter");
+  }
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);

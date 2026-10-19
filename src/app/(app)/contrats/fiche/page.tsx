@@ -106,7 +106,7 @@ function Fiche({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.25fr_1fr]">
         <section className="animate-in rounded-3xl bg-ink p-5 text-white sm:p-7" data-testid="calc-card">
           <div className="flex items-start justify-between gap-4">
             <div>

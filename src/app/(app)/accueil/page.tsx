@@ -131,7 +131,7 @@ function PatronHome() {
         <Stat label="Transports en cours" value={String(enRoute.length)} hint={enRoute.map((t) => t.ref).join(", ") || "—"} icon={<Route className="size-4" />} />
         <Stat label="Actions à confirmer" value={String(db.pending.filter((p) => p.status === "en_attente").length)} hint="Demandes des gestionnaires" icon={<ClipboardCheck className="size-4" />} />
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="min-w-0 space-y-3">
           <div className="flex items-center justify-between"><h2 className="text-[16px] font-bold tracking-[-0.01em]">Contrats</h2><Link href="/contrats/" className="text-[13px] font-semibold text-brand-700 hover:underline">Tout voir</Link></div>
           <ContractsTable db={db} rows={contracts} />
@@ -175,7 +175,7 @@ function ManagerHome() {
         <Stat label="Réceptions à Kaboli" value={String(kaboli.length)} hint="Saisies par vous" icon={<Warehouse className="size-4" />} />
         <Stat label="Mes demandes en attente" value={String(mine.filter((p) => p.status === "en_attente").length)} hint={`${mine.length} au total`} icon={<ClipboardCheck className="size-4" />} />
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-3">
           <h2 className="text-[16px] font-bold">Transports en cours</h2>
           <DataTable rows={active} rowKey={(t) => t.id} onRow={(t) => router.push(`/transports/fiche/?id=${t.id}`)}

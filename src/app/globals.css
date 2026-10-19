@@ -60,6 +60,11 @@
 /* ——— Thème SweetAlert2 : bleu, noir, blanc ——— */
 .swal2-container { z-index: 2000 !important; }
 .swal2-container.swal2-backdrop-show { background: rgba(11, 13, 18, 0.55) !important; }
+body.swal2-toast-shown .swal2-container, .swal2-container:has(> .swal2-toast) { background: transparent !important; }
+.ls-toast .swal2-icon.ls-ticon { border: 0 !important; width: 1.9rem !important; height: 1.9rem !important; min-width: 1.9rem; margin: 0 0.75rem 0 0 !important; transform: none !important; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff !important; display: grid !important; place-items: center; }
+.ls-toast .swal2-icon.ls-ticon .swal2-icon-content { font-size: 1rem !important; line-height: 0; display: flex; align-items: center; justify-content: center; }
+.ls-toast .swal2-icon.ls-ticon svg { width: 16px !important; height: 16px !important; flex: none; display: block; }
+.ls-toast .swal2-icon.ls-ticon.ls-ticon-info { background: var(--color-brand-600); }
 .ls-popup.swal2-popup {
   border-radius: 20px !important; padding: 1.75rem 1.5rem 1.5rem !important; width: min(30rem, calc(100vw - 2rem)) !important;
   border: 1px solid var(--color-line); font-family: var(--font-sans); color: var(--color-ink);

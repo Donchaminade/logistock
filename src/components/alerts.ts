@@ -26,6 +26,15 @@ const toastMixin = Swal.mixin({
   },
 });
 
+const svg = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const TOAST_ICON: Record<string, string> = {
+  success: svg('<path d="M20 6 9 17l-5-5"/>'),
+  error: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  warning: svg('<path d="M12 8v5M12 16.5v.01"/>'),
+  info: svg('<path d="M12 10.5V17M12 7h.01"/>'),
+  question: svg('<path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17v.01"/>'),
+};
+
 type ToastItem = { icon: SweetAlertIcon; title: string; text?: string; onClick?: () => void };
 const queue: ToastItem[] = [];
 let flushing = false;
@@ -45,6 +54,8 @@ async function flush() {
     const t = queue.shift()!;
     await toastMixin.fire({
       icon: t.icon,
+      iconHtml: TOAST_ICON[t.icon],
+      customClass: { popup: "ls-toast", icon: `ls-ticon ls-ticon-${t.icon}` },
       title: t.title,
       text: t.text,
       didOpen: (el) => {

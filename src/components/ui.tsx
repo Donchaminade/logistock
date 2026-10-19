@@ -95,12 +95,12 @@ export function PageHeader({ title, sub, actions, back, eyebrow }: { title: stri
 
 export function Stat({ label, value, hint, icon, accent }: { label: string; value: ReactNode; hint?: ReactNode; icon?: ReactNode; accent?: boolean }) {
   return (
-    <div className={cx("rounded-2xl border p-4 sm:p-5", accent ? "border-ink bg-ink text-white" : "border-line bg-white")}>
+    <div className={cx("min-w-0 rounded-2xl border p-4 sm:p-5", accent ? "border-ink bg-ink text-white" : "border-line bg-white")}>
       <div className="flex items-center justify-between gap-2">
         <span className={cx("text-[12.5px] font-medium", accent ? "text-white/70" : "text-muted")}>{label}</span>
         {icon && <span className={cx("grid size-8 place-items-center rounded-lg", accent ? "bg-white/10 text-white" : "bg-brand-50 text-brand-700")}>{icon}</span>}
       </div>
-      <div className="num mt-2 text-[20px] font-bold leading-tight tracking-[-0.02em] sm:text-[22px]">{value}</div>
+      <div className="num mt-2 text-[17px] font-bold leading-tight tracking-[-0.02em] [overflow-wrap:anywhere] min-[420px]:text-[20px] sm:text-[22px]">{value}</div>
       {hint && <div className={cx("num mt-1 text-[12.5px]", accent ? "text-white/60" : "text-subtle")}>{hint}</div>}
     </div>
   );
@@ -295,7 +295,7 @@ export function DataTable<T>({ rows, columns, rowKey, onRow, empty }: { rows: T[
             {rows.map((r) => (
               <tr key={rowKey(r)} onClick={onRow ? () => onRow(r) : undefined} className={cx("border-b border-line last:border-0 transition-colors", onRow && "cursor-pointer hover:bg-brand-50/40")}>
                 {columns.map((c) => (
-                  <td key={c.key} className={cx("num px-4 py-3.5 align-middle", c.align === "right" && "text-right")}>{c.render(r)}</td>
+                  <td key={c.key} className={cx("num px-4 py-3.5 align-middle", c.align === "right" && "text-right", c.mobile === "title" && "whitespace-nowrap")}>{c.render(r)}</td>
                 ))}
               </tr>
             ))}

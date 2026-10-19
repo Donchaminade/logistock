@@ -30,16 +30,16 @@ L'application s'ouvre directement sur l'écran de connexion. Il n'y a pas de pag
 
 ## Comptes de démo
 
-Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place. Vous pouvez aussi saisir le numéro et le mot de passe à la main.
+Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place. Vous pouvez aussi saisir l'e-mail ou le téléphone, et le mot de passe. Le numéro est accepté avec ou sans indicatif (`90 11 22 33`, `+228 90 11 22 33`, `00228 90 11 22 33`).
 
-| Rôle | Nom | Téléphone (+228) | Mot de passe |
-|---|---|---|---|
-| Patron (financeur) | Komlan Agbéko | 90 11 22 33 | `patron2026` |
-| Gestionnaire délégué (Kaboli) | Yawa Dossou | 91 22 33 44 | `gestion2026` |
-| Fournisseur (cacao, Badou) | Kossi Amegah | 92 33 44 55 | `fourni2026` |
-| Gestionnaire délégué (Lomé) | Edem Kpodar | 91 55 66 77 | `gestion2026` |
-| Fournisseuse (soja, Atakpamé) | Jamilana Issifou | 92 66 77 88 | `fourni2026` |
-| Fournisseuse (soja, Notsé) | Afi Lawson | 93 44 55 66 | `fourni2026` |
+| Rôle | Nom | E-mail | Téléphone (+228) | Mot de passe |
+|---|---|---|---|---|
+| Patron (financeur) | Komlan Agbéko | `komlan.agbeko@example.com` | 90 11 22 33 | `patron2026` |
+| Gestionnaire délégué (Kaboli) | Yawa Dossou | `yawa.dossou@example.com` | 91 22 33 44 | `gestion2026` |
+| Fournisseur (cacao, Badou) | Kossi Amegah | `kossi.amegah@example.com` | 92 33 44 55 | `fourni2026` |
+| Gestionnaire délégué (Lomé) | Edem Kpodar | `edem.kpodar@example.com` | 91 55 66 77 | `gestion2026` |
+| Fournisseuse (soja, Atakpamé) | Jamilana Issifou | `jamilana.issifou@example.com` | 92 66 77 88 | `fourni2026` |
+| Fournisseuse (soja, Notsé) | Afi Lawson | `afi.lawson@example.com` | 93 44 55 66 | `fourni2026` |
 
 Les trois derniers comptes se trouvent sous « Autres comptes de démo ». Quand le patron crée un compte fournisseur, l'application affiche un mot de passe provisoire `LS-xxxx`. À sa première connexion, le fournisseur doit le changer.
 

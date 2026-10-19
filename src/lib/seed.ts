@@ -8,15 +8,15 @@ import type { Database, TraceEvent } from "./types";
 const d = (s: string) => new Date(s).toISOString();
 
 export const DEMO_ACCOUNTS = [
-  { id: "u-patron", role: "patron", name: "Komlan Agbéko", phone: "90 11 22 33", password: "patron2026", title: "Patron · financeur" },
-  { id: "u-yawa", role: "gestionnaire", name: "Yawa Dossou", phone: "91 22 33 44", password: "gestion2026", title: "Gestionnaire déléguée · Kaboli" },
-  { id: "u-kossi", role: "fournisseur", name: "Kossi Amegah", phone: "92 33 44 55", password: "fourni2026", title: "Fournisseur · cacao · Badou" },
+  { id: "u-patron", role: "patron", name: "Komlan Agbéko", phone: "90 11 22 33", email: "komlan.agbeko@example.com", password: "patron2026", title: "Patron · financeur" },
+  { id: "u-yawa", role: "gestionnaire", name: "Yawa Dossou", phone: "91 22 33 44", email: "yawa.dossou@example.com", password: "gestion2026", title: "Gestionnaire déléguée · Kaboli" },
+  { id: "u-kossi", role: "fournisseur", name: "Kossi Amegah", phone: "92 33 44 55", email: "kossi.amegah@example.com", password: "fourni2026", title: "Fournisseur · cacao · Badou" },
 ] as const;
 
 export const OTHER_ACCOUNTS = [
-  { id: "u-edem", role: "gestionnaire", name: "Edem Kpodar", phone: "91 55 66 77", password: "gestion2026", title: "Gestionnaire délégué · magasin de Lomé" },
-  { id: "u-jamilana", role: "fournisseur", name: "Jamilana Issifou", phone: "92 66 77 88", password: "fourni2026", title: "Fournisseuse · soja · Atakpamé" },
-  { id: "u-afi", role: "fournisseur", name: "Afi Lawson", phone: "93 44 55 66", password: "fourni2026", title: "Fournisseuse · soja · Notsé" },
+  { id: "u-edem", role: "gestionnaire", name: "Edem Kpodar", phone: "91 55 66 77", email: "edem.kpodar@example.com", password: "gestion2026", title: "Gestionnaire délégué · magasin de Lomé" },
+  { id: "u-jamilana", role: "fournisseur", name: "Jamilana Issifou", phone: "92 66 77 88", email: "jamilana.issifou@example.com", password: "fourni2026", title: "Fournisseuse · soja · Atakpamé" },
+  { id: "u-afi", role: "fournisseur", name: "Afi Lawson", phone: "93 44 55 66", email: "afi.lawson@example.com", password: "fourni2026", title: "Fournisseuse · soja · Notsé" },
 ] as const;
 
 function chain(events: Omit<TraceEvent, "hash" | "prevHash">[]): TraceEvent[] {

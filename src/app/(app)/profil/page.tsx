@@ -22,7 +22,7 @@ export default function Profil() {
             <div className="text-[13.5px] text-muted">{me.title}</div>
           </div>
         </div>
-        <div className="mt-6"><KV items={[{ k: "Rôle", v: roleLabel[me.role] }, { k: "Téléphone", v: `+228 ${me.phone}` }, { k: "Zone", v: me.zone ?? "—" }, { k: "Compte créé le", v: date(me.createdAt) }]} /></div>
+        <div className="mt-6"><KV items={[{ k: "Rôle", v: roleLabel[me.role] }, { k: "E-mail", v: me.email ?? "—" }, { k: "Téléphone", v: `+228 ${me.phone}` }, { k: "Zone", v: me.zone ?? "—" }, { k: "Compte créé le", v: date(me.createdAt) }]} /></div>
       </Card>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <Button variant="secondary" size="lg" icon={<KeyRound className="size-4" />} onClick={async () => {

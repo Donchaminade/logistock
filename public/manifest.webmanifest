@@ -1,0 +1,22 @@
+{
+  "name": "LogiStock — Préfinancement soja et cacao",
+  "short_name": "LogiStock",
+  "description": "Avances, contrats, enlèvements, pesées et soldes des acheteurs de soja et de cacao (maquette, données fictives).",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0b0d12",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Mes trajets", "url": "/trajets/" },
+    { "name": "Déclarer un achat", "url": "/declarer/" },
+    { "name": "Réception et pesées", "url": "/reception/" }
+  ]
+}

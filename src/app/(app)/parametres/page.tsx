@@ -186,7 +186,7 @@ function Lieux({ edit }: { edit: boolean }) {
   const [f, setF] = useState({ name: "", type: "etape" as Location["type"], lat: "", lng: "" });
   const locs = db.locations.filter((l) => !l.deleted);
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem]">
       <DataTable rows={locs} rowKey={(l) => l.id} columns={[
         { key: "n", header: "Lieu", mobile: "title", render: (l) => <span className="font-semibold">{l.name}</span> },
         { key: "t", header: "Type", mobile: "sub", render: (l) => LOC_TYPE[l.type] },

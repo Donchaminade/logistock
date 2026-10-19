@@ -4,7 +4,11 @@ const BASE = process.env.BASE ?? "http://localhost:4173";
 const PAGES = {
   patron: ["/accueil/", "/besoins/", "/contrats/", "/contrats/fiche/?id=ct-017", "/contrats/fiche/?id=ct-014", "/transports/", "/transports/fiche/?id=tr-041", "/transports/fiche/?id=tr-036", "/stocks/", "/finances/", "/actions/", "/fournisseurs/", "/droits/", "/journal/", "/notifications/", "/profil/", "/plus/", "/recu/?id=av-017"],
   gestionnaire: ["/accueil/", "/besoins/", "/contrats/", "/contrats/fiche/?id=ct-017", "/transports/", "/transports/fiche/?id=tr-041", "/stocks/", "/actions/", "/fournisseurs/", "/notifications/", "/profil/", "/plus/"],
-  fournisseur: ["/accueil/", "/contrats/", "/contrats/fiche/?id=ct-017", "/transports/fiche/?id=tr-041", "/declarer/", "/declarer/?tab=partielle", "/besoins/", "/notifications/", "/profil/"],
+  fournisseur: ["/accueil/", "/contrats/", "/contrats/fiche/?id=ct-017", "/transports/fiche/?id=tr-041", "/declarer/", "/declarer/?tab=partielle", "/besoins/", "/commissions/", "/enlevements/", "/releve/", "/notifications/", "/profil/"],
+  admin: ["/accueil/", "/utilisateurs/", "/parametres/", "/droits/", "/journal/", "/exports/", "/commissions/", "/profil/", "/plus/"],
+  magasinier: ["/accueil/", "/reception/", "/transports/", "/transports/fiche/?id=tr-041", "/stocks/", "/carte/", "/profil/", "/plus/"],
+  chauffeur: ["/accueil/", "/trajets/", "/enlevements/", "/frais/", "/notifications/", "/profil/"],
+  comptable: ["/accueil/", "/finances/", "/commissions/", "/charges/", "/exports/", "/journal/", "/releve/", "/profil/", "/plus/"],
 };
 const b = await chromium.launch();
 let bad = 0, errs = [];
@@ -34,3 +38,4 @@ for (const [role, list] of Object.entries(PAGES)) {
 }
 console.log(bad ? `${bad} page(s) en débordement` : "✔ Aucune page en débordement horizontal à 360 px", errs);
 await b.close();
+process.exit(bad || errs.length ? 1 : 0);

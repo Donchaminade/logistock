@@ -43,7 +43,8 @@ export default function Releve() {
         {ms.map(({ c, m }) => (
           <Card key={c.id}>
             <CardTitle title={c.ref} sub={`Solde ${fcfa(m.S)} · reste ${tonnes(m.Q)} · prix en vigueur ${m.P} FCFA/kg`} icon={<ScrollText className="size-[18px]" />} />
-            <table className="w-full text-[13.5px]">
+            <div className="-mx-5 overflow-x-auto px-5 sm:-mx-6 sm:px-6" data-scroll-x>
+            <table className="w-full min-w-[30rem] text-[13.5px]">
               <thead><tr className="border-b border-line text-left text-[12px] uppercase tracking-[0.05em] text-subtle"><th className="py-2">Date</th><th>Opération</th><th className="text-right">Débit</th><th className="text-right">Crédit</th><th className="text-right">Solde</th></tr></thead>
               <tbody>
                 {ledger(db, c).map((l, i) => (
@@ -51,6 +52,7 @@ export default function Releve() {
                 ))}
               </tbody>
             </table>
+            </div>
           </Card>
         ))}
       </div>

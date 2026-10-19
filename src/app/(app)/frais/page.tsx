@@ -19,7 +19,7 @@ export default function Frais() {
   return (
     <>
       <PageHeader eyebrow="Chauffeur" title="Frais du véhicule" sub="Carburant, péage, réparation : déclarez avec le justificatif. Le patron ou l'administrateur valide." />
-      <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[22rem_1fr]">
         <Card>
           <CardTitle title="Déclarer des frais" icon={<Receipt className="size-[18px]" />} />
           <div className="space-y-4">

@@ -44,7 +44,7 @@
   }
   .field:focus { @apply border-brand-600 ring-4 ring-brand-100; }
   .field:disabled { @apply bg-canvas text-muted; }
-  .card { @apply rounded-2xl border border-line bg-white; }
+  .card { @apply min-w-0 rounded-2xl border border-line bg-white; }
   .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle; }
   .skeleton { @apply animate-pulse rounded-lg bg-line; }
   .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0px); }

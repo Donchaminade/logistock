@@ -8,7 +8,10 @@ Maquette **front uniquement** de LogiStock, l'application de gestion des préfin
 - Tailwind CSS 4, dépendance npm locale compilée au build (aucun CDN).
 - Police Inter et icônes Lucide embarquées localement. **Aucune requête externe** au chargement (vérifié par les tests).
 - SweetAlert2 pour toutes les confirmations, validations, erreurs et notifications (toasts).
-- jsPDF pour les reçus de remise d'argent.
+- jsPDF et jspdf-autotable pour les reçus, relevés, exports et le rapport mensuel ; write-excel-file pour les exports Excel (.xlsx générés dans le navigateur).
+- @noble/hashes et @noble/curves (repli) pour SHA-256 et Ed25519 ; WebCrypto quand le navigateur le permet.
+- Leaflet pour les cartes, avec un fond schématique local (aucune tuile chargée tant que l'utilisateur ne coche pas « Fond OpenStreetMap »).
+- **PWA** installable : manifeste, icônes, service worker qui précache tout le site au build.
 
 ## Lancer en local
 
@@ -30,24 +33,35 @@ L'application s'ouvre directement sur l'écran de connexion. Il n'y a pas de pag
 
 ## Comptes de démo
 
-Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place. Vous pouvez aussi saisir le numéro et le mot de passe à la main.
+Sur l'écran de connexion, les boutons de **connexion rapide** remplissent le formulaire à votre place, un par rôle. Vous pouvez aussi saisir le numéro et le mot de passe à la main.
 
 | Rôle | Nom | Téléphone (+228) | Mot de passe |
 |---|---|---|---|
 | Patron (financeur) | Komlan Agbéko | 90 11 22 33 | `patron2026` |
 | Gestionnaire délégué (Kaboli) | Yawa Dossou | 91 22 33 44 | `gestion2026` |
 | Fournisseur (cacao, Badou) | Kossi Amegah | 92 33 44 55 | `fourni2026` |
+| Administratrice (comptes, paramètres) | Akouvi Mensah | 90 22 33 44 | `admin2026` |
+| Magasinier (magasin central de Lomé) | Mawuli Tété | 94 11 22 33 | `magasin2026` |
+| Chauffeur (TG-5520-CA) | Yao Gbadoé | 98 12 34 56 | `chauffeur2026` |
+| Comptable (lecture et exports) | Essi Kouma | 90 33 44 55 | `compta2026` |
 | Gestionnaire délégué (Lomé) | Edem Kpodar | 91 55 66 77 | `gestion2026` |
 | Fournisseuse (soja, Atakpamé) | Jamilana Issifou | 92 66 77 88 | `fourni2026` |
 | Fournisseuse (soja, Notsé) | Afi Lawson | 93 44 55 66 | `fourni2026` |
 
-Les trois derniers comptes se trouvent sous « Autres comptes de démo ». Quand le patron crée un compte fournisseur, l'application affiche un mot de passe provisoire `LS-xxxx`. À sa première connexion, le fournisseur doit le changer.
+Les trois derniers comptes se trouvent sous « Autres comptes de démo ». Quand le patron crée un compte fournisseur, ou l'administratrice un compte interne, l'application affiche un mot de passe provisoire `LS-xxxx`. À sa première connexion, l'utilisateur doit le changer.
+
+**Sécurité de connexion (US-01).**
+- Après **5 échecs consécutifs** (valeur réglable dans Paramètres → Sécurité), le compte est bloqué 15 minutes. L'administratrice et le patron sont alertés, et l'administratrice peut débloquer depuis **Utilisateurs**.
+- Les rôles mobiles (fournisseur, chauffeur, magasinier, gestionnaire) sont invités à définir un **code PIN** de 4 à 6 chiffres dans **Profil**. Le PIN est rattaché à l'appareil et stocké en SHA-256 salé, jamais en clair.
+- Sur un appareil autorisé, l'écran de connexion propose « Déverrouiller avec mon PIN », y compris **hors ligne**. Cinq PIN erronés retirent l'autorisation de l'appareil.
+
+> La branche `cursor/login-email-phone-b60f` (PR n° 1) ajoute la connexion par e-mail ou par téléphone international. Elle touche l'écran de connexion et la normalisation des numéros. Le présent travail n'y a ajouté que le strict nécessaire : PIN, message de blocage, avis hors ligne et boutons des nouveaux rôles. Les conflits éventuels lors de la fusion se limitent à `src/app/page.tsx`, `src/services/auth.ts` (fonction `login`) et `src/lib/seed.ts` (comptes).
 
 **Astuce de présentation :** chaque onglet garde sa propre session. Ouvrez un rôle par onglet, ou une fenêtre côte à côte : les actions d'un rôle apparaissent en direct chez les autres, avec un toast et un badge sur la cloche.
 
 **Réinitialiser la démo** remet toutes les données fictives d'origine. Le bouton se trouve en bas de la barre latérale sur ordinateur, ou dans Profil sur mobile.
 
-Le déroulé conseillé pour une présentation au client est dans [PARCOURS_DEMO.md](./PARCOURS_DEMO.md) (environ 10 minutes).
+Le déroulé conseillé pour une présentation au client est dans [PARCOURS_DEMO.md](./PARCOURS_DEMO.md) : environ 10 minutes pour le cœur, et 6 minutes de plus pour les nouveaux rôles.
 
 ## Ce que montre la maquette
 
@@ -61,25 +75,54 @@ Le déroulé conseillé pour une présentation au client est dans [PARCOURS_DEMO
 | 5. Pointage à Lomé | Pointer l'arrivée à Lomé : contrôle de la plaque et du coût de transport, imputé au patron ou au solde du fournisseur | Patron, gestionnaire |
 | 6. Pesée et réception | Pesée et réception : poids net, prix figé, valeur livrée | Patron, gestionnaire |
 | 7. Solde | Solder : soldé, ou passage en dette ; remboursements | Patron |
+| Enlèvement | Stocks → Planifier : ordre d'enlèvement (véhicule, chauffeur, arrêts, étapes), notifié au chauffeur et aux fournisseurs | Patron, gestionnaire, administratrice |
+| Trajet du chauffeur | Mes trajets : chargement confirmé (sacs, photo), étapes, arrivée à Lomé avec photo, frais du véhicule | Chauffeur |
+| Réception au magasin | Réception et pesées : camions annoncés, pointage, pesée (humidité, ticket), réception au prix figé | Magasinier |
+| Commissions | Règle par contrat (par kg, % ou forfait ; versée ou déduite), calculée → validée → payée | Patron, administratrice |
 | Livraison partielle | Déclarer → Livraison partielle : notification « 80 t sur 100 t — reliquat 20 t » | Fournisseur |
 | Ajustement du reliquat | Ajuster le prix du reliquat : option A (même montant, quantité recalculée) ou B (même quantité, complément à verser) | Patron (gestionnaire sur validation) |
 
 Le reste à livrer est toujours recalculé à partir des écritures :
 
 ```
-S = A − V − R + T     (avances − valeur livrée − remboursements + transport imputé au fournisseur)
-Q = ⌊ S / P ⌋         (P = prix en vigueur)
+S = A − V − R − J + Tf   (avances − valeur livrée − remboursements − ajustements + transport imputé au fournisseur)
+Q = ⌊ S / P ⌋            (P = prix en vigueur)
 ```
 
 Exemple du cahier des charges : 10 000 000 FCFA à 215 FCFA/kg, puis 35 t livrées. Il reste 11 511 kg ; après révision à 300 FCFA/kg, il reste 8 250 kg.
 
 ### Rôles et droits
 
-- **Patron** : voit tout, valide, supprime, gère les comptes fournisseurs et les droits.
-- **Gestionnaire délégué** : crée et modifie selon ses droits, mais **ne supprime jamais directement**. Ses suppressions et ses changements sensibles (prix du reliquat) partent dans **Actions à confirmer**, où le patron valide ou refuse avec un motif.
-- **Fournisseur** : application mobile (navigation basse). Il voit ses contrats, ses reçus, son reste à livrer et ses transports, déclare ses achats, confirme les étapes de ses lots et déclare ses livraisons partielles, et propose sur les besoins ouverts.
+| Rôle | Espace | Ce qu'il fait |
+|---|---|---|
+| **Patron** | ordinateur et mobile | Voit tout, valide, supprime, gère les comptes fournisseurs et les droits, valide et paie les commissions, passe les pertes. |
+| **Gestionnaire délégué** | mobile et ordinateur | Crée et modifie selon ses droits, mais **ne supprime jamais directement**. Ses suppressions et ses changements sensibles (prix du reliquat) partent dans **Actions à confirmer**. |
+| **Fournisseur** | mobile | Voit ses contrats, reçus, relevé, commissions et enlèvements. Déclare ses achats et ses livraisons partielles, et propose sur les besoins. |
+| **Administratrice** | ordinateur | Gère les comptes internes (création, déblocage, réinitialisation, désactivation, appareils), les paramètres (seuils, sécurité, prix de revente, règles de commission), les véhicules, les chauffeurs et les lieux. Lit les droits sans les modifier. |
+| **Magasinier** | mobile et tablette | Voit les camions annoncés, pointe, pèse (brut, tare, sacs, humidité, ticket) et réceptionne au prix figé. Consulte les stocks et la carte. |
+| **Chauffeur** | mobile | Suit ses ordres d'enlèvement, confirme chargements et étapes, déclare l'arrivée avec photo et déclare ses frais. Tout fonctionne hors ligne. |
+| **Comptable** | ordinateur | Lit les finances, dettes, commissions, charges et le journal. Exporte en Excel et en PDF, y compris le rapport mensuel. Aucun droit d'écriture. |
 
-Le patron règle les droits de création, de lecture, de modification et de suppression du gestionnaire et du fournisseur, entité par entité, dans **Rôles et droits**. Les modifications s'appliquent en direct dans les autres onglets.
+Le patron règle les droits de création, de lecture, de modification et de suppression de chaque rôle, entité par entité, dans **Rôles et droits**. Les modifications s'appliquent en direct dans les autres onglets. Les règles non négociables (pas de suppression directe pour le gestionnaire, pas d'accès aux comptes pour le comptable) sont signalées par un cadenas. Les écrans hors du rôle affichent « Accès réservé ».
+
+### Hors ligne et PWA
+
+- L'application est **installable** (« Ajouter à l'écran d'accueil ») et s'ouvre sans réseau. `npm run build` génère `out/sw.js` (`scripts/gen-sw.mjs`), qui précache toutes les pages, scripts, polices, icônes et images de démo, avec un cache versionné par empreinte du build.
+- L'indicateur en haut de l'écran affiche **Synchronisé**, **Synchronisation…** ou **Hors ligne**, avec le nombre d'opérations en attente. Un clic permet de **simuler** une coupure dans l'onglet courant, de rétablir le réseau ou de synchroniser tout de suite.
+- **Autorisé hors ligne** : déclarations d'achat, livraisons partielles, transports, étapes, chargements, arrivée, pointage, pesée et frais. Chaque saisie part dans une **file d'attente** avec une clé d'idempotence, puis est envoyée automatiquement au retour du réseau, sans doublon. Les notifications sont différées jusqu'à la synchronisation.
+- **Réseau exigé** : remises d'argent, révisions de prix, réception au prix figé, remboursements, clôtures, paiements de commission et gestion des comptes.
+
+### Intégrité : SHA-256 et Ed25519
+
+- Chaque reçu de remise porte l'**empreinte SHA-256** de son contenu canonique et une **signature Ed25519**. Le reçu PDF contient l'empreinte et un QR code vers `/verifier/?no=…&h=…`.
+- La page publique **Vérifier un reçu** (`/verifier/`, sans connexion) recalcule l'empreinte, vérifie la signature et compare l'empreinte imprimée. « Simuler une falsification » montre l'échec quand le montant est modifié.
+- Le **journal d'audit** est chaîné : chaque ligne contient le SHA-256 de son contenu et de la ligne précédente. « Vérifier l'intégrité » recalcule la chaîne. La timeline de chaque lot est chaînée de la même façon.
+- ⚠️ **Clé de démonstration** : dans la maquette, la clé privée Ed25519 de démo est embarquée dans le code (`src/lib/crypto.ts`) pour signer localement. **En production, la clé privée reste côté serveur** (HSM ou coffre de secrets). Le serveur signe et horodate, et le navigateur ne fait que vérifier avec la clé publique. La vérification de la maquette s'appuie aussi sur les données locales du navigateur ; en production, elle interrogera l'API.
+
+### Exports, rapport mensuel et carte
+
+- **Exports** : stocks, dettes et contrats en Excel (.xlsx) ou en PDF, plus un classeur complet. Le **rapport mensuel du patron** (PDF) se filtre par mois et par produit. Tout est généré dans le navigateur, sans serveur.
+- **Carte des lots** et carte de chaque trajet : fond schématique local du Togo, lieux, stocks déclarés et trajets en cours. Le fond OpenStreetMap est facultatif. Il n'est demandé que si l'utilisateur coche la case et que le réseau est disponible ; sinon, la carte reste utilisable.
 
 ## Charte graphique
 
@@ -118,9 +161,9 @@ La maquette est prête à basculer vers un backend sans toucher aux écrans.
    - `POST /api/v1/{ressource}` → création ;
    - `PATCH /api/v1/{ressource}/{id}` → modification partielle.
    
-   Ressources : `users`, `needs`, `offers`, `contracts`, `price-revisions`, `advances`, `locations`, `transports`, `lot-trace-events`, `arrival-checkins`, `deliveries`, `partial-deliveries`, `declarations`, `repayments`, `expenses`, `debts`, `notifications`, `pending-actions`, `audit-log`, `settings`. Fichiers : `POST /api/v1/files` renvoie `{ ref }`. Les JSON suivent les interfaces de `src/lib/types.ts`, avec des montants en FCFA entiers, des poids en kg entiers et des dates ISO 8601.
+   Ressources : `users`, `needs`, `offers`, `contracts`, `price-revisions`, `advances`, `locations`, `transports`, `lot-trace-events`, `arrival-checkins`, `deliveries`, `partial-deliveries`, `declarations`, `repayments`, `expenses`, `debts`, `notifications`, `pending-actions`, `audit-log`, `settings`, `devices`, `vehicles`, `drivers`, `pickup-orders`, `adjustments`, `commissions`. Fichiers : `POST /api/v1/files` renvoie `{ ref }`. Les JSON suivent les interfaces de `src/lib/types.ts`, avec des montants en FCFA entiers, des poids en kg entiers et des dates ISO 8601.
 3. **Côté Spring Boot** : une entité JPA et un `@RestController` par interface de `types.ts`. Il faut aussi activer le CORS pour le domaine Vercel et une authentification JWT : l'implémentation envoie `Authorization: Bearer <token>`. Le point d'entrée de connexion est à brancher dans `HttpDataSource.session`.
-4. **Règles à porter côté serveur** : en production, le serveur doit refaire tous les calculs et contrôles, car le navigateur ne peut pas en être le garant. Cela couvre le reliquat et les révisions (`lib/calc.ts`), les droits (`lib/permissions.ts`), le refus de suppression pour le gestionnaire et la mise en file des actions sensibles (`services/actions.ts`), le prix figé à la réception, l'annulation par contre-écriture, le journal chaîné et la signature des reçus (SHA-256 et Ed25519 dans le cahier des charges ; la maquette utilise une empreinte FNV de démonstration).
+4. **Règles à porter côté serveur** : en production, le serveur doit refaire tous les calculs et contrôles, car le navigateur ne peut pas en être le garant. Cela couvre le reliquat et les révisions (`lib/calc.ts`), les droits (`lib/permissions.ts`), le refus de suppression pour le gestionnaire et la mise en file des actions sensibles (`services/actions.ts`), le prix figé à la réception, l'annulation par contre-écriture, le journal chaîné, l'horodatage et la signature Ed25519 des reçus et des révisions, avec une clé privée qui ne quitte jamais le serveur. La maquette signe localement avec une clé de démonstration.
 5. **Temps réel** : la source HTTP interroge l'API toutes les 10 secondes. Elle peut être remplacée par SSE ou WebSocket dans `subscribe()`.
 6. « Réinitialiser la démo » n'existe qu'en mode local.
 
@@ -135,23 +178,33 @@ Le projet est un site statique. Vercel détecte Next.js automatiquement :
 ## Tests
 
 ```bash
-npm run build && npm start                # dans un premier terminal
+npm run build && npm start                # dans un premier terminal (ou : cd out && python3 -m http.server 4173)
 npx playwright install chromium           # une seule fois
 npm run test:e2e                          # dans un second terminal
 ```
 
-`e2e/parcours.mjs` déroule le parcours complet sur les 3 rôles, dans des onglets ouverts en parallèle, et fait 39 vérifications :
+`npm run test:e2e` enchaîne trois scripts. Le dossier des captures se règle avec `SHOTS=…` ; par défaut, c'est `e2e/captures/`, qui n'est pas versionné.
 
-- validation d'une proposition et création du contrat ;
-- remise avec photo et reçu PDF ;
-- pointage, pesée et réception ;
-- livraison partielle 80/100 t ;
-- ajustement 200 → 250 FCFA/kg qui ramène le reliquat de 20 t à 16 t, et exemple 11 511 kg → 8 250 kg ;
-- mise en file des actions du gestionnaire et leur validation ;
-- droits appliqués en direct ;
-- création d'un compte fournisseur et première connexion ;
-- passage en dette ;
-- réinitialisation ;
-- absence de requête externe et d'erreur JavaScript.
+`e2e/parcours.mjs` fait 39 vérifications. Il déroule le cycle complet patron, gestionnaire et fournisseur dans des onglets ouverts en parallèle :
+- proposition validée, remise avec photo et reçu PDF ;
+- pointage, pesée, livraison partielle 80/100 t ;
+- ajustement 200 → 250 FCFA/kg (reliquat de 20 t à 16 t), et exemple 11 511 kg → 8 250 kg ;
+- actions à confirmer, droits appliqués en direct ;
+- création d'un compte fournisseur, passage en dette, réinitialisation.
 
-`e2e/mobile-debordement.mjs` vérifie qu'aucun écran ne déborde horizontalement à 360 px. Les captures sont écrites dans `e2e/captures/`, qui n'est pas versionné.
+`e2e/roles.mjs` fait 52 vérifications :
+- **Signature** : vérification d'un reçu authentique, falsification détectée, empreinte imprimée erronée refusée.
+- **Administratrice** : création de compte et matrice des droits.
+- **Verrouillage** : 5 échecs, blocage, alerte en direct, déblocage, connexion, journal.
+- **Comptable** : accès réservé, lecture seule, exports xlsx et PDF, rapport mensuel.
+- **Commissions** : cycle calculée → validée → payée.
+- **Chauffeur** : PIN, étape, arrivée avec photo, notification du magasinier.
+- **Magasinier** : pointage, pesée, réception au prix figé, carte.
+- **Journal** : chaîne intègre.
+- **Hors ligne simulé** : frais en file d'attente, puis synchronisation automatique.
+- **PIN** : déverrouillage, refus d'un PIN erroné.
+- **PWA** : manifeste et service worker ; rechargement et navigation avec le réseau réellement coupé ; remise refusée hors ligne ; avis hors ligne à la connexion.
+
+`e2e/mobile-debordement.mjs` vérifie qu'aucun écran des 7 rôles ne déborde horizontalement à 360 px.
+
+Tous les scripts vérifient aussi l'absence de requête externe et d'erreur JavaScript.

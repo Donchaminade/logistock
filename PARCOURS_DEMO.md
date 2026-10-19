@@ -1,6 +1,6 @@
-# Parcours de démonstration — environ 10 minutes
+# Parcours de démonstration — environ 10 minutes (+ 6 minutes pour les nouveaux rôles)
 
-Ce parcours couvre tout le cycle d'un achat financé, des étapes 0 à 7, avec les trois rôles, la livraison partielle et le recalcul du reliquat. Toutes les données sont **fictives**.
+Ce parcours couvre tout le cycle d'un achat financé, des étapes 0 à 7, avec la livraison partielle et le recalcul du reliquat. Les parties 1 à 9 utilisent le patron, la gestionnaire et le fournisseur. Les parties 10 à 15 montrent l'administratrice, le chauffeur, le magasinier, le comptable, le mode hors ligne et la vérification d'un reçu. Toutes les données sont **fictives**.
 
 ## Préparation (1 minute avant le client)
 
@@ -54,7 +54,7 @@ Ce parcours couvre tout le cycle d'un achat financé, des étapes 0 à 7, avec l
 ## 6. Ajustement du prix du reliquat — 1 min 30 · Onglet 1
 
 1. Cliquez le toast, ou ouvrez **Contrats → CT-2026-017**. Le bandeau de livraison partielle est affiché avec la preuve.
-2. La **carte de calcul** détaille A, V, R et T, puis S = A − V − R + T et Q = S / P. Le reste à livrer est de **20 t**.
+2. La **carte de calcul** détaille A, V, R, J et T, puis S = A − V − R − J + Tf et Q = S / P. Le reste à livrer est de **20 t**.
 3. Cliquez **Ajuster le prix du reliquat** et saisissez **250 FCFA/kg** :
    - **Option A**, même argent : le reliquat devient **16 t**.
    - **Option B**, même quantité : 20 t restent dues, avec un **complément de 1 000 000 FCFA** à verser.
@@ -78,11 +78,55 @@ Ce parcours couvre tout le cycle d'un achat financé, des étapes 0 à 7, avec l
 ## 9. Étape 7 : solde ou dette — 30 s · Onglet 1
 
 1. **CT-2026-009** (Afi) est échu. Il reste 180 000 FCFA de transport imputé au fournisseur.
-2. Cliquez **Solder**, puis **Passer en dette** et fixez une échéance. La dette apparaît dans **Paiements et dettes**, où l'on peut **encaisser** les remboursements.
+2. Cliquez **Solder** : remboursement partiel, ou clôture par remboursement, report sur un autre contrat ou dette. Choisissez **Clore : dette** et fixez une échéance.
+3. La dette apparaît dans **Paiements et dettes**, classée par ancienneté. On peut y **encaisser** un remboursement, en argent ou en marchandise. Le patron peut aussi passer une perte signée.
+
+## 10. Administratrice — 1 min · nouvel onglet
+
+1. « Connexion rapide » → **Administratrice** (Akouvi Mensah). L'accueil affiche les comptes actifs et bloqués, les appareils autorisés et les opérations en attente.
+2. **Utilisateurs → Nouveau compte** : créez un magasinier. Le mot de passe provisoire s'affiche et devra être changé à la première connexion. Montrez aussi l'onglet **Appareils**.
+3. **Paramètres** : seuils d'alerte, sécurité (nombre d'échecs, durée de blocage), prix de revente, **règles de commission** par contrat, véhicules, chauffeurs et lieux avec leurs coordonnées.
+4. **Rôles et droits** : un onglet par rôle, en lecture seule pour l'administratrice. Les cadenas signalent les règles non modifiables.
+
+## 11. Verrouillage et code PIN — 1 min · onglet mobile
+
+1. Sur l'écran de connexion, saisissez **90 33 44 55** avec un mauvais mot de passe cinq fois. Au 5e échec, le compte est **bloqué 15 minutes**. Dans l'onglet de l'administratrice, un toast « Compte bloqué » apparaît.
+2. Administratrice → **Utilisateurs** → **Débloquer**. La comptable peut de nouveau se connecter, et le journal trace le blocage et le déblocage.
+3. Connectez le **Chauffeur** (Yao Gbadoé). Un bandeau invite à définir un **code PIN** : Profil → Définir un code PIN, par exemple 2580, deux fois.
+4. Ouvrez un nouvel onglet sur l'écran de connexion. « Déverrouiller avec mon PIN » propose Yao, et le PIN suffit pour entrer, même hors ligne.
+
+## 12. Chauffeur et magasinier — 1 min 30 · onglet mobile et onglet ordinateur
+
+1. **Chauffeur** → **Mes trajets** → **PK-2026-006**. Les chargements chez Kossi sont confirmés, les étapes Kaboli et Atakpamé passées, et la carte du trajet est affichée.
+2. **Confirmer le passage** à Tsévié, puis **Déclarer l'arrivée avec photo** (vignette « Chargement »).
+3. Onglet **Magasinier** (Mawuli Tété) : un toast « Camion arrivé à Lomé » apparaît. **Réception et pesées** montre TR-2026-041 à pointer.
+4. Ouvrez le lot. **Pointer l'arrivée**, puis **Peser** (brut, tare, sacs, humidité, photo du ticket). La livraison est réceptionnée à **200 FCFA/kg figés**, et le reste à livrer passe de 100 t à 20 t.
+5. Menu **Carte des lots** : stocks chez les acheteurs et trajets en cours, sur un fond local qui fonctionne sans réseau.
+
+## 13. Hors ligne — 1 min · onglet chauffeur
+
+1. Cliquez l'indicateur **Synchronisé** en haut de l'écran, puis **Simuler hors ligne**. L'indicateur passe en noir : « Hors ligne ».
+2. **Frais** : déclarez 35 000 FCFA de carburant avec un justificatif. Le message indique « en attente de synchronisation » et le compteur affiche 1.
+3. Essayez une remise d'argent dans un onglet hors ligne : elle est refusée, car une opération financière exige le réseau.
+4. **Rétablir le réseau** : la file part toute seule, sans doublon, et le patron reçoit les frais à valider.
+5. Sur téléphone, installez l'application (« Ajouter à l'écran d'accueil »). Elle s'ouvre ensuite sans réseau.
+
+## 14. Comptable, commissions, exports — 1 min
+
+1. **Comptable** (Essi Kouma) : finances, dettes par ancienneté, commissions, charges et journal, en lecture seule. **Utilisateurs** affiche « Accès réservé ».
+2. **Exports** : stocks, dettes et contrats en Excel ou en PDF, un classeur complet, et le **rapport mensuel** du patron en PDF, par mois et par produit.
+3. Administratrice ou patron → **Commissions** : **Calculer** sur un contrat, puis **Valider**, puis **Payer**. Selon la règle, la commission est une dépense versée ou un ajustement J déduit du solde du fournisseur. Le fournisseur la voit dans son espace.
+
+## 15. Vérifier un reçu — 30 s
+
+1. Ouvrez un reçu PDF : son **QR code** mène à `/verifier/`, une page publique sans connexion. Vous pouvez aussi saisir le numéro, par exemple RC-2026-0038, et l'empreinte imprimée.
+2. Le résultat indique **Reçu authentique** : l'empreinte SHA-256 est recalculée et la signature Ed25519 est valide.
+3. **Simuler une falsification** : le montant est modifié de 1 000 000 FCFA et la vérification échoue.
+4. Le bandeau rappelle que la clé est une **clé de démo**. En production, elle sera **côté serveur** et ne quittera jamais l'API.
 
 ## Conclusion — 30 s
 
-- Tout est tracé : le **Journal d'audit** est chaîné, et la vérification d'intégrité tient en un clic.
-- L'application est mobile d'abord pour le terrain et complète sur ordinateur pour le patron.
+- Tout est tracé : le **Journal d'audit** est chaîné en SHA-256, et la vérification d'intégrité tient en un clic. Les reçus sont signés en Ed25519 et vérifiables par n'importe qui.
+- L'application est mobile d'abord pour le terrain (fournisseur, chauffeur, magasinier), installable et utilisable hors ligne, et complète sur ordinateur pour le patron, l'administratrice et la comptable.
 - C'est une maquette : les données sont stockées dans le navigateur. Le branchement sur l'API Spring Boot est prévu, voir le README.
 - **Réinitialiser la démo** permet de rejouer le parcours.

@@ -3,8 +3,8 @@
 // demain une implémentation HTTP vers l'API Spring Boot prendra le relais sans toucher aux écrans.
 import type {
   Adjustment, Advance, AppNotification, AuditEntry, Checkin, Collection, Commission, Contract, Database, Declaration, Debt,
-  Delivery, Device, Driver, Entity, EntityOf, Expense, Id, Location, Need, Offer, OutboxItem, PartialDelivery, Payment,
-  PendingAction, Pickup, PriceRevision, Settings, TraceEvent, Transport, User, Vehicle,
+  Delivery, Device, Driver, Entity, EntityOf, Expense, GeoPing, Id, Location, LocationConsent, LocationTrack, LoginLog, Need, Offer, OutboxItem, PartialDelivery, Payment,
+  PendingAction, Pickup, PriceRevision, Settings, TraceEvent, TrackShare, Transport, User, Vehicle,
 } from "@/lib/types";
 
 export interface Repository<T extends Entity> {
@@ -41,6 +41,11 @@ export type PickupRepository = Repository<Pickup>;
 export type AdjustmentRepository = Repository<Adjustment>;
 export type CommissionRepository = Repository<Commission>;
 export type OutboxRepository = Repository<OutboxItem>;
+export type ConsentRepository = Repository<LocationConsent>;
+export type LoginLogRepository = Repository<LoginLog>;
+export type TrackRepository = Repository<LocationTrack>;
+export type PositionRepository = Repository<GeoPing>;
+export type ShareRepository = Repository<TrackShare>;
 
 export interface Repositories {
   users: UserRepository;
@@ -70,6 +75,11 @@ export interface Repositories {
   adjustments: AdjustmentRepository;
   commissions: CommissionRepository;
   outbox: OutboxRepository;
+  consents: ConsentRepository;
+  loginLogs: LoginLogRepository;
+  tracks: TrackRepository;
+  positions: PositionRepository;
+  shares: ShareRepository;
 }
 
 // Vérification à la compilation : une entrée par collection, avec le bon type.

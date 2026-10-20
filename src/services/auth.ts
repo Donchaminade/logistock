@@ -4,6 +4,7 @@ import { dateTime } from "@/lib/format";
 import { bestPhoneMatch, displayPhone, normEmail } from "@/lib/identity";
 import type { Id, User } from "@/lib/types";
 import { assert, audit, ds, notify, now, requireOnline, settings } from "./core";
+import { journalGeo, logConnection, markOffline } from "./location";
 import { isOnline } from "./network";
 /** Rôles invités à définir un PIN dès la première connexion (usage sur téléphone, terrain). */
 export const MOBILE_ROLES = ["fournisseur", "chauffeur", "magasinier", "gestionnaire"] as const;
@@ -22,10 +23,14 @@ export async function login(identifier: string, password: string): Promise<User>
   const u = byEmail
     ? users.find((x) => x.email && normEmail(x.email) === normEmail(raw))
     : bestPhoneMatch(users, raw, (x) => x.phone);
-  assert(u, "E-mail, numéro ou mot de passe incorrect.");
+  if (!u) {
+    await logConnection({ account: raw, success: false, reason: "Identifiant inconnu.", method: "mot_de_passe" });
+    assert(u, "E-mail, numéro ou mot de passe incorrect.");
+  }
   const s = await settings();
   if (u.lockedUntil && u.lockedUntil > now()) {
     const min = Math.ceil((new Date(u.lockedUntil).getTime() - Date.now()) / 60000);
+    await logConnection({ user: u, account: u.name, success: false, reason: "Compte encore bloqué.", method: "mot_de_passe" });
     throw new LockedError(u.lockedUntil, `Compte temporairement bloqué après ${s.maxFailedLogins} échecs. Réessayez dans ${min} min (vers ${dateTime(u.lockedUntil)}) ou demandez à l'administrateur de le débloquer.`);
   }
   if (u.password !== password) {
@@ -36,21 +41,29 @@ export async function login(identifier: string, password: string): Promise<User>
       await audit("system", "Compte bloqué", "users", u.id, `${u.name} · ${failed} échecs consécutifs · bloqué ${s.lockMinutes} min`);
       for (const to of ["admin", "patron"] as const)
         await notify("system", to, "Compte bloqué", `${u.name} (${displayPhone(u.phone)}) : ${failed} échecs de connexion consécutifs. Compte bloqué ${s.lockMinutes} min.`, "/utilisateurs/");
+      await logConnection({ user: u, account: u.name, success: false, reason: `${failed} échecs consécutifs.`, method: "mot_de_passe" });
       throw new LockedError(until, `Cinq échecs consécutifs : compte bloqué ${s.lockMinutes} minutes. L'administrateur a été alerté.`);
     }
     await ds().repos.users.update(u.id, { failedAttempts: failed, lockedUntil: undefined });
     const left = s.maxFailedLogins - failed;
+    await logConnection({ user: u, account: u.name, success: false, reason: "Mot de passe incorrect.", method: "mot_de_passe" });
     throw new Error(`E-mail, numéro ou mot de passe incorrect. ${left} essai${left > 1 ? "s" : ""} avant blocage temporaire.`);
+  }
+  if (!u.active) {
+    await logConnection({ user: u, account: u.name, success: false, reason: "Compte désactivé.", method: "mot_de_passe" });
   }
   assert(u.active, "Ce compte est désactivé. Contactez l'administrateur ou le patron.");
   await ds().repos.users.update(u.id, { failedAttempts: 0, lockedUntil: undefined });
   ds().session.set(u.id);
-  await audit(u, "Connexion", "users", u.id, `${u.name} s'est connecté(e)`);
+  const geo = await logConnection({ user: u, account: u.name, success: true, method: "mot_de_passe" });
+  await audit(u, "Connexion", "users", u.id, `${u.name} s'est connecté(e)`, geo ? { geo } : undefined);
   return u;
 }
 
 export function logout() {
+  const id = ds().session.get();
   ds().session.set(null);
+  if (id) void markOffline(id);
 }
 
 export async function unlockUser(me: User, id: Id) {
@@ -64,8 +77,9 @@ export async function unlockUser(me: User, id: Id) {
 
 export async function changePassword(me: User, pwd: string) {
   assert(pwd.length >= 6, "Le mot de passe doit contenir au moins 6 caractères.");
+  const geo = await journalGeo(me);
   await ds().repos.users.update(me.id, { password: pwd, mustChangePassword: false });
-  await audit(me, "Changement de mot de passe", "users", me.id, `${me.name} a changé son mot de passe`);
+  await audit(me, "Changement de mot de passe", "users", me.id, `${me.name} a changé son mot de passe`, { geo });
 }
 
 // ——— Code PIN par appareil ———
@@ -109,14 +123,17 @@ export async function unlockWithPin(userId: Id, pin: string): Promise<User> {
     if (failed >= 5) {
       await ds().repos.devices.update(id, { failedPins: failed, deleted: true });
       await audit("system", "PIN révoqué", "devices", id, `${u.name} · 5 codes PIN erronés`);
+      await logConnection({ user: u, account: u.name, success: false, reason: "Cinq codes PIN erronés.", method: "pin" });
       throw new Error("Cinq codes PIN erronés : l'autorisation de cet appareil est retirée. Reconnectez-vous avec votre mot de passe.");
     }
     await ds().repos.devices.update(id, { failedPins: failed });
+    await logConnection({ user: u, account: u.name, success: false, reason: "Code PIN incorrect.", method: "pin" });
     throw new Error(`Code PIN incorrect. ${5 - failed} essai(s) restant(s).`);
   }
   await ds().repos.devices.update(id, { failedPins: 0, lastUnlockAt: now() });
   ds().session.set(u.id);
-  await audit(u, "Déverrouillage par PIN", "devices", id, `${u.name}${isOnline() ? "" : " · hors ligne"}`);
+  const geo = await logConnection({ user: u, account: u.name, success: true, method: "pin" });
+  await audit(u, "Déverrouillage par PIN", "devices", id, `${u.name}${isOnline() ? "" : " · hors ligne"}`, geo ? { geo } : undefined);
   return u;
 }
 

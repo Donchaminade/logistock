@@ -1,6 +1,7 @@
 // Parcours complet LogiStock sur les 3 rôles (Playwright, Chromium headless).
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { acceptConsent, GEO } from "./consent.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:4173";
 const SHOTS = process.env.SHOTS ?? new URL("./captures", import.meta.url).pathname;
@@ -12,7 +13,7 @@ const N = (t) => t.replace(/[\u00a0\u202f]/g, " ");
 const ok = (name, cond, extra = "") => { results.push({ name, pass: !!cond, extra }); console.log(`${cond ? "✔" : "✘"} ${name}${extra ? " — " + extra : ""}`); };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ acceptDownloads: true, locale: "fr-FR", timezoneId: "Africa/Lome" });
+const ctx = await browser.newContext({ acceptDownloads: true, locale: "fr-FR", timezoneId: "Africa/Lome", ...GEO });
 ctx.on("request", (r) => { const u = new URL(r.url()); if (!["localhost", "127.0.0.1"].includes(u.hostname) && !u.protocol.startsWith("data") && !u.protocol.startsWith("blob")) external.add(r.url()); });
 
 async function open(name, viewport) {
@@ -28,6 +29,7 @@ async function login(p, role) {
   await p.goto(BASE + "/");
   await p.getByTestId(`quick-${role}`).click();
   await p.waitForURL("**/accueil/");
+  await acceptConsent(p);
   await p.waitForTimeout(400);
 }
 async function hasToast(p, text, timeout = 6000) {
@@ -235,6 +237,8 @@ await D.goto(BASE + "/");
 await D.locator("input[name=phone]").fill("96 11 22 33");
 await D.locator("input[name=password]").fill(temp);
 await D.getByRole("button", { name: "Se connecter" }).click();
+await acceptConsent(D);
+await D.locator(".swal2-input").waitFor();
 await D.locator(".swal2-input").fill("nouveau2026");
 await confirmSwal(D);
 await D.waitForURL("**/accueil/");

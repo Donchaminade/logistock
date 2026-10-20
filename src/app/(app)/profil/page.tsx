@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, LogOut, MonitorSmartphone, RotateCcw } from "lucide-react";
 import { confirmLogout, confirmReset } from "@/components/AppShell";
@@ -33,6 +34,10 @@ export default function Profil() {
         }}>Changer le mot de passe</Button>
         <Button variant="secondary" size="lg" icon={<RotateCcw className="size-4" />} onClick={() => confirmReset(router)} data-testid="reset-demo">Réinitialiser la démo</Button>
         <Button variant="dark" size="lg" icon={<LogOut className="size-4" />} data-testid="logout-profile" onClick={() => void confirmLogout(signOut, router)}>Déconnexion</Button>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Link href="/confidentialite/" className="card block p-4 text-[14.5px] font-semibold hover:bg-canvas" data-testid="link-privacy">Confidentialité / localisation</Link>
+        <Link href="/connexions/" className="card block p-4 text-[14.5px] font-semibold hover:bg-canvas">Mes connexions</Link>
       </div>
       <PinCard />
       <Card className="mt-4 animate-in">

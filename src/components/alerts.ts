@@ -133,6 +133,7 @@ export async function askText(opts: { title: string; html?: string; input?: "tex
     inputPlaceholder: opts.placeholder,
     showCancelButton: opts.allowCancel ?? true,
     allowOutsideClick: opts.allowCancel ?? true,
+    allowEscapeKey: opts.allowCancel ?? true,
     confirmButtonText: opts.confirmText ?? "Valider",
     cancelButtonText: "Annuler",
     inputValidator: (v: string) => opts.validate?.(v ?? ""),

@@ -14,6 +14,7 @@ import {
   ActionError, assert, audit, db, ds, ensureLocation, nextRef, notify, now, offlineCapable, perms, posInt, requireOnline,
   requireOwn, requirePerm, roleTitle, settings,
 } from "./core";
+import { journalGeo } from "./location";
 import { isOnline } from "./network";
 
 export { ActionError };
@@ -43,8 +44,9 @@ async function insertUser(me: User, i: { role: Role; name: string; phone: string
   const temp = `LS-${Math.floor(1000 + Math.random() * 9000)}`;
   const phone = canonicalPhone(i.phone);
   const u: User = { id: uid("u"), role: i.role, name: i.name.trim(), phone, email, password: temp, title: i.title, zone: i.zone, active: true, mustChangePassword: true, failedAttempts: 0, createdAt: now(), createdBy: me.id };
+  const geo = await journalGeo(me);
   await ds().repos.users.create(u);
-  await audit(me, `Création de compte ${roleTitle(u).toLowerCase()}`, "users", u.id, `${u.name} (${phone})`, { after: { role: u.role, name: u.name, phone } });
+  await audit(me, `Création de compte ${roleTitle(u).toLowerCase()}`, "users", u.id, `${u.name} (${phone})`, { after: { role: u.role, name: u.name, phone }, geo });
   return { user: u, tempPassword: temp };
 }
 
@@ -65,8 +67,9 @@ export async function setUserActive(me: User, id: Id, active: boolean) {
   else await requirePerm(me, "utilisateurs", "u");
   assert(u.role !== "patron", "Le compte patron ne peut pas être désactivé.");
   requireOnline("La gestion des comptes");
+  const geo = await journalGeo(me);
   await ds().repos.users.update(id, { active });
-  await audit(me, active ? "Réactivation de compte" : "Désactivation de compte", "users", id, u.name, { before: { active: u.active }, after: { active } });
+  await audit(me, active ? "Réactivation de compte" : "Désactivation de compte", "users", id, u.name, { before: { active: u.active }, after: { active }, geo });
 }
 
 export async function resetUserPassword(me: User, id: Id) {
@@ -75,8 +78,9 @@ export async function resetUserPassword(me: User, id: Id) {
   const u = (await ds().repos.users.get(id))!;
   if (u.role === "fournisseur" || u.role === "patron") assert(me.role === "patron", "Seul le patron réinitialise ce compte.");
   const temp = `LS-${Math.floor(1000 + Math.random() * 9000)}`;
+  const geo = await journalGeo(me);
   await ds().repos.users.update(id, { password: temp, mustChangePassword: true, failedAttempts: 0, lockedUntil: undefined });
-  await audit(me, "Réinitialisation du mot de passe", "users", id, u.name);
+  await audit(me, "Réinitialisation du mot de passe", "users", id, u.name, { geo });
   return temp;
 }
 
@@ -272,8 +276,9 @@ export async function recordAdvance(me: User, contractId: Id, i: { amount: numbe
   const { force, ...data } = i;
   const draft: Advance = { id: uid("av"), contractId, kind: "remise", ...data, status: i.photo ? "validee" : "a_completer", receiptNo, receiptHash: "", receiptSignature: "", by: me.id, at: now() };
   const adv = { ...draft, ...(await sealReceipt(snap, draft)) };
+  const geo = await journalGeo(me);
   await ds().repos.advances.create(adv);
-  await audit(me, force ? "Remise d'argent (seuil de dette dépassé, décision du patron)" : "Remise d'argent", "advances", adv.id, `${receiptNo} · ${fcfa(i.amount)} · ${c.ref}${i.photo ? "" : " · photo manquante"} · empreinte ${adv.receiptHash.slice(0, 16)}`, { after: { amount: adv.amount, qtyKg: adv.qtyKg, unitPrice: adv.unitPrice, mode: adv.mode } });
+  await audit(me, force ? "Remise d'argent (seuil de dette dépassé, décision du patron)" : "Remise d'argent", "advances", adv.id, `${receiptNo} · ${fcfa(i.amount)} · ${c.ref}${i.photo ? "" : " · photo manquante"} · empreinte ${adv.receiptHash.slice(0, 16)}`, { after: { amount: adv.amount, qtyKg: adv.qtyKg, unitPrice: adv.unitPrice, mode: adv.mode }, geo });
   await notify(me, c.supplierId, "Remise d'argent enregistrée", `${fcfa(i.amount)} pour ${c.ref} (${tonnes(i.qtyKg)} à ${prixKg(i.unitPrice)}). Reçu ${receiptNo}.`, ficheC(c.id));
   if (me.role !== "patron") await notify(me, "patron", "Remise saisie par un gestionnaire", `${me.name} a saisi ${fcfa(i.amount)} pour ${c.ref}.`, ficheC(c.id));
   if (!i.photo) await notify(me, "patron", "Photo de remise manquante", `Le versement ${receiptNo} reste « à compléter » tant que la photo n'est pas jointe.`, ficheC(c.id));
@@ -363,8 +368,9 @@ export async function declarePartial(me: User, contractId: Id, i: { foundKg: num
   assert(i.proof, "Joignez une preuve (photo, ticket ou document).");
   const remainderKg = c.qtyKg - i.foundKg;
   const p = { id: uid("lp"), contractId, contractedKg: c.qtyKg, foundKg: i.foundKg, remainderKg, reason: i.reason, proof: i.proof, by: me.id, at: now(), seenByPatron: false };
+  const geo = await journalGeo(me);
   await ds().repos.partials.create(p);
-  await audit(me, "Livraison partielle déclarée", "partial_deliveries", p.id, `${c.ref} · ${tonnes(i.foundKg)} sur ${tonnes(c.qtyKg)} · reliquat ${tonnes(remainderKg)}`, { after: p });
+  await audit(me, "Livraison partielle déclarée", "partial_deliveries", p.id, `${c.ref} · ${tonnes(i.foundKg)} sur ${tonnes(c.qtyKg)} · reliquat ${tonnes(remainderKg)}`, { after: p, geo });
   await notify(me, "patron", "Livraison partielle", `${c.ref} : ${tonnes(i.foundKg, " ")} sur ${tonnes(c.qtyKg, " ")} — reliquat ${tonnes(remainderKg, " ")}. Motif : ${i.reason}`, ficheC(c.id));
   return p;
 }
@@ -408,6 +414,7 @@ export async function createTransport(me: User, i: { contractId: Id; origin: str
   const plate = i.vehicle.trim().toUpperCase();
   assert(PLATE.test(plate), "Matricule invalide (format attendu : TG-1234-AB).");
   assert(i.driver.trim(), "Le chauffeur est obligatoire.");
+  const geo = await journalGeo(me);
   return offlineCapable(me, `Transport ${plate} · ${tonnes(i.tonsKg, " ")}`, async () => {
     if (i.saveOrigin) await ensureLocation(me, i.origin, "origine");
     const vehicles = await ds().repos.vehicles.list();
@@ -423,7 +430,7 @@ export async function createTransport(me: User, i: { contractId: Id; origin: str
     const t: Transport = { id: uid("tr"), ref, contractId: c.id, pickupId: i.pickupId, driverId, product: c.product, origin: i.origin.trim(), tonsKg: i.tonsKg, vehicle: plate, driver: i.driver.trim(), driverPhone: i.driverPhone, carrier: i.carrier.trim() || "—", loadingDate: i.loadingDate, departureDate: i.departureDate, status: "en_route", createdBy: me.id, createdAt: now() };
     await ds().repos.transports.create(t);
     await addTraceEventRaw(me, t.id, { type: "chargement", place: t.origin, at: i.loadingDate, qtyKg: i.tonsKg, receiver: t.driver, receiverRole: "Chauffeur", vehicle: t.vehicle, driver: t.driver, carrier: t.carrier });
-    await audit(me, "Création de transport", "transports", t.id, `${ref} · ${tonnes(i.tonsKg)} · ${t.vehicle} · ${t.driver} · depuis ${t.origin}`, { after: { ref, tonsKg: t.tonsKg, vehicle: t.vehicle, driver: t.driver } });
+    await audit(me, "Création de transport", "transports", t.id, `${ref} · ${tonnes(i.tonsKg)} · ${t.vehicle} · ${t.driver} · depuis ${t.origin}`, { after: { ref, tonsKg: t.tonsKg, vehicle: t.vehicle, driver: t.driver }, geo });
     await notify(me, c.supplierId, "Transport créé", `${ref} : ${tonnes(i.tonsKg)} chargées à ${t.origin} (${t.vehicle}).`, ficheT(t.id));
     if (me.role !== "patron") await notify(me, "patron", "Nouveau transport", `${me.name} a créé ${ref} : ${tonnes(i.tonsKg)} depuis ${t.origin}.`, ficheT(t.id));
     const du = drivers.find((d) => d.id === driverId)?.userId;
@@ -440,6 +447,7 @@ export async function addTraceEvent(me: User, transportId: Id, e: { type: TraceT
   assert(e.place.trim(), "Le lieu est obligatoire.");
   posInt(e.qtyKg, "La quantité");
   assert(e.receiver.trim(), "Le réceptionnaire est obligatoire.");
+  const geo = await journalGeo(me);
   return offlineCapable(me, `${TRACE_LABEL[e.type]} · ${t.ref} · ${e.place}`, async () => {
     if (e.saveLocation) await ensureLocation(me, e.place, "etape");
     const { saveLocation, ...data } = e;
@@ -448,7 +456,7 @@ export async function addTraceEvent(me: User, transportId: Id, e: { type: TraceT
     const c = (await ds().repos.contracts.get(t.contractId))!;
     const s = await settings();
     const gap = t.tonsKg > 0 && Math.abs(e.qtyKg - t.tonsKg) / t.tonsKg > s.weightGapThresholdPct / 100;
-    await audit(me, `Trace : ${TRACE_LABEL[e.type]}`, "lot_trace_events", ev.id, `${t.ref} · ${e.place} · ${tonnes(e.qtyKg)} · réceptionnaire ${e.receiver}`, { after: { place: e.place, qtyKg: e.qtyKg, receiver: e.receiver } });
+    await audit(me, `Trace : ${TRACE_LABEL[e.type]}`, "lot_trace_events", ev.id, `${t.ref} · ${e.place} · ${tonnes(e.qtyKg)} · réceptionnaire ${e.receiver}`, { after: { place: e.place, qtyKg: e.qtyKg, receiver: e.receiver }, geo });
     const body = `${t.ref} · ${e.place} : ${tonnes(e.qtyKg)} — réceptionnaire ${e.receiver}.${gap ? ` Écart de ${tonnes(e.qtyKg - t.tonsKg)} par rapport au chargement.` : ""}`;
     await notify(me, me.role === "patron" ? c.supplierId : "patron", `${TRACE_LABEL[e.type]} enregistré`, body, ficheT(t.id));
     if (me.role === "patron") await notify(me, "gestionnaire", `${TRACE_LABEL[e.type]} enregistré`, body, ficheT(t.id));
@@ -504,6 +512,7 @@ export async function confirmLoading(me: User, pickupId: Id, stopId: Id, i: { lo
   const sup = (await ds().repos.users.get(stop.supplierId))!;
   const c = (await ds().repos.contracts.get(stop.contractId))!;
   const at = i.at ?? now();
+  const geo = await journalGeo(me);
   return offlineCapable(me, `Chargement ${p.ref} chez ${sup.name} · ${tonnes(i.loadedKg, " ")}`, async () => {
     const ref = await nextRef("TR", (await ds().repos.transports.list()).map((t) => t.ref));
     const t: Transport = { id: uid("tr"), ref, contractId: c.id, pickupId: p.id, driverId: driver.id, product: c.product, origin: sup.zone ?? c.deliveryPlace, tonsKg: i.loadedKg, vehicle: p.vehicle, driver: driver.name, driverPhone: driver.phone, carrier: p.carrier, loadingDate: at, departureDate: at, status: "en_route", createdBy: me.id, createdAt: now() };
@@ -512,7 +521,7 @@ export async function confirmLoading(me: User, pickupId: Id, stopId: Id, i: { lo
     const stops = p.stops.map((s) => (s.id === stopId ? { ...s, loadedKg: i.loadedKg, bags: i.bags, photo: i.photo, confirmedAt: at, confirmedBy: me.id, transportId: t.id } : s));
     await ds().repos.pickups.update(p.id, { stops });
     const gap = i.loadedKg - stop.plannedKg;
-    await audit(me, "Chargement confirmé", "pickup_orders", p.id, `${p.ref} · ${sup.name} · ${tonnes(i.loadedKg)} · ${i.bags} sacs → lot ${ref}`, { before: { plannedKg: stop.plannedKg }, after: { loadedKg: i.loadedKg, bags: i.bags } });
+    await audit(me, "Chargement confirmé", "pickup_orders", p.id, `${p.ref} · ${sup.name} · ${tonnes(i.loadedKg)} · ${i.bags} sacs → lot ${ref}`, { before: { plannedKg: stop.plannedKg }, after: { loadedKg: i.loadedKg, bags: i.bags }, geo });
     const body = `${p.ref} · ${p.vehicle} : ${tonnes(i.loadedKg)} (${i.bags} sacs) chargées chez ${sup.name}${gap ? `, prévu ${tonnes(stop.plannedKg)}` : ""}. Lot ${ref}.`;
     await notify(me, "patron", "Chargement confirmé", body, ficheP(p.id));
     await notify(me, sup.id, "Chargement confirmé", body, ficheT(t.id));
@@ -529,11 +538,12 @@ export async function passStage(me: User, pickupId: Id, stageId: Id, i: { at?: s
   const lots = (await ds().repos.transports.list()).filter((t) => t.pickupId === p.id && t.status === "en_route" && !t.deleted);
   assert(lots.length, "Confirmez d'abord au moins un chargement.");
   const at = i.at ?? now();
+  const geo = await journalGeo(me);
   return offlineCapable(me, `Étape ${st.place} · ${p.ref}`, async () => {
     for (const t of lots)
       await addTraceEventRaw(me, t.id, { type: "etape", place: st.place, at, qtyKg: t.tonsKg, receiver: t.driver, receiverRole: "Chauffeur", vehicle: p.vehicle, driver: t.driver, comment: i.comment, photo: i.photo });
     await ds().repos.pickups.update(p.id, { route: p.route.map((r) => (r.id === stageId ? { ...r, passedAt: at, comment: i.comment, photo: i.photo, by: me.id } : r)) });
-    await audit(me, "Passage d'étape", "pickup_orders", p.id, `${p.ref} · ${st.place}`, { after: { place: st.place, at } });
+    await audit(me, "Passage d'étape", "pickup_orders", p.id, `${p.ref} · ${st.place}`, { after: { place: st.place, at }, geo });
     await notify(me, "patron", `Étape ${st.place}`, `${p.ref} · ${p.vehicle} a passé ${st.place}.`, ficheP(p.id));
     for (const cid of new Set(lots.map((t) => t.contractId))) {
       const c = (await ds().repos.contracts.get(cid))!;
@@ -550,11 +560,12 @@ export async function declareArrival(me: User, pickupId: Id, i: { photo?: string
   assert(lots.length, "Aucun lot en route sur cet ordre.");
   assert(i.photo, "Prenez une photo du camion à l'arrivée (preuve du pointage chauffeur).");
   const at = now();
+  const geo = await journalGeo(me);
   return offlineCapable(me, `Arrivée à Lomé · ${p.ref}`, async () => {
     for (const t of lots)
       await addTraceEventRaw(me, t.id, { type: "arrivee_declaree", place: "Lomé · magasin central", at, qtyKg: t.tonsKg, receiver: t.driver, receiverRole: "Chauffeur", vehicle: p.vehicle, driver: t.driver, photo: i.photo, comment: i.comment });
     await ds().repos.pickups.update(p.id, { arrivalDeclaredAt: at, arrivalPhoto: i.photo });
-    await audit(me, "Arrivée déclarée", "pickup_orders", p.id, `${p.ref} · ${p.vehicle} · ${lots.length} lot(s)`, { after: { arrivalDeclaredAt: at } });
+    await audit(me, "Arrivée déclarée", "pickup_orders", p.id, `${p.ref} · ${p.vehicle} · ${lots.length} lot(s)`, { after: { arrivalDeclaredAt: at }, geo });
     const body = `${p.vehicle} (${p.ref}) est arrivé au magasin : ${tonnes(lots.reduce((s, t) => s + t.tonsKg, 0))} à pointer et peser.`;
     await notify(me, "magasinier", "Camion arrivé à Lomé", body, "/reception/");
     await notify(me, "patron", "Camion arrivé à Lomé", body, ficheP(p.id));
@@ -680,13 +691,14 @@ export async function declarePurchase(me: User, i: { contractId: Id; date: strin
   posInt(i.qtyKg, "La quantité");
   posInt(i.pricePaid, "Le prix payé");
   assert(i.place.trim(), "Le lieu ou village est obligatoire.");
+  const geo = await journalGeo(me);
   return offlineCapable(me, `Déclaration · ${tonnes(i.qtyKg, " ")} à ${i.place}`, async (generated) => {
     const clientUuid = i.clientUuid ?? generated;
     const dup = (await ds().repos.declarations.list()).find((d) => d.clientUuid === clientUuid);
     if (dup) return dup; // clé d'idempotence : jamais de doublon
     const dc = { id: uid("dc"), supplierId: me.id, ...i, clientUuid, createdAt: now() };
     await ds().repos.declarations.create(dc);
-    await audit(me, "Déclaration d'achat", "purchase_declarations", dc.id, `${tonnes(i.qtyKg)} à ${i.place} · ${prixKg(i.pricePaid)}`, { after: { qtyKg: i.qtyKg, place: i.place, pricePaid: i.pricePaid } });
+    await audit(me, "Déclaration d'achat", "purchase_declarations", dc.id, `${tonnes(i.qtyKg)} à ${i.place} · ${prixKg(i.pricePaid)}`, { after: { qtyKg: i.qtyKg, place: i.place, pricePaid: i.pricePaid }, geo });
     await notify(me, "patron", "Stock déclaré", `${me.name} déclare ${tonnes(i.qtyKg)} achetées à ${i.place} (${c.ref}). Stock prêt à enlever.`, "/stocks/");
     const s = await settings();
     if (i.qtyKg >= s.stockAlertKg) await notify(me, "admin", "Stock prêt à enlever", `${me.name} : ${tonnes(i.qtyKg)} déclarées (seuil ${tonnes(s.stockAlertKg)}).`, "/stocks/");

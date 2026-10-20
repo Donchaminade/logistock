@@ -9,7 +9,8 @@ import { Logo } from "@/components/Logo";
 import { Avatar, Button, cx, Field, Input } from "@/components/ui";
 import { DEMO_ACCOUNTS, OTHER_ACCOUNTS } from "@/lib/seed";
 import { roleLabel } from "@/lib/format";
-import { changePassword, LockedError, login, pinUsers, unlockWithPin } from "@/services/actions";
+import { LockedError, login, pinUsers, unlockWithPin } from "@/services/actions";
+import { pullGeoNotice } from "@/services/location";
 import { isOnline, onNetworkChange } from "@/services/network";
 import type { User } from "@/lib/types";
 
@@ -67,23 +68,14 @@ export default function LoginPage() {
     setBusy(key);
     try {
       const u = await login(p, pw);
-      if (u.mustChangePassword) {
-        const np = await askText({
-          title: "Choisissez votre mot de passe",
-          html: "Première connexion : remplacez le mot de passe provisoire remis par le patron.",
-          input: "password",
-          placeholder: "Nouveau mot de passe (6 caractères min.)",
-          allowCancel: false,
-          validate: (v) => (v.length < 6 ? "6 caractères minimum." : undefined),
-        });
-        if (np) await changePassword(u, np);
-      }
       await refresh();
       toast(`Bienvenue, ${u.name.split(" ")[0]}`, roleLabel[u.role]);
       router.replace("/accueil/");
     } catch (e) {
       await fail(e, e instanceof LockedError ? "Compte bloqué" : "Connexion refusée");
     } finally {
+      const note = pullGeoNotice();
+      if (note) toast("Localisation", note, "info");
       setBusy(null);
     }
   }

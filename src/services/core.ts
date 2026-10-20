@@ -46,14 +46,25 @@ export function requireOnline(what: string) {
 // ——— Mode différé : pendant une saisie hors ligne, les notifications sont retenues dans l'outbox ———
 let deferred: Id[] | null = null;
 
-export async function audit(me: User | "system", action: string, entity: string, entityId: Id | undefined, detail: string, values?: { before?: unknown; after?: unknown }) {
+export interface AuditGeo {
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  positionNote?: string;
+}
+
+export async function audit(me: User | "system" | "lien", action: string, entity: string, entityId: Id | undefined, detail: string, values?: { before?: unknown; after?: unknown; geo?: AuditGeo }) {
   const list = await ds().repos.audit.list();
   const prevHash = list[list.length - 1]?.hash ?? GENESIS;
   const base = {
-    at: now(), by: me === "system" ? "system" : me.id, action, entity, entityId, detail: plain(detail),
+    at: now(), by: typeof me === "string" ? me : me.id, action, entity, entityId, detail: plain(detail),
     before: values?.before === undefined ? undefined : JSON.stringify(values.before),
     after: values?.after === undefined ? undefined : JSON.stringify(values.after),
     device: `${ds().device.id().slice(0, 11)}${isOnline() ? "" : " · hors ligne"}`,
+    lat: values?.geo?.lat,
+    lng: values?.geo?.lng,
+    accuracy: values?.geo?.accuracy,
+    positionNote: values?.geo?.positionNote,
   };
   await ds().repos.audit.create({ id: uid("au"), ...base, prevHash, hash: await auditHash(prevHash, base) });
 }

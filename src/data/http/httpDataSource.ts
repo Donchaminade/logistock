@@ -12,6 +12,8 @@ export const ENDPOINTS: Record<Collection, string> = {
   notifications: "notifications", pending: "pending-actions", audit: "audit-log", settings: "settings",
   devices: "devices", vehicles: "vehicles", drivers: "drivers", pickups: "pickup-orders", adjustments: "adjustments",
   commissions: "commissions", outbox: "sync/outbox",
+  consents: "location-consents", loginLogs: "login-logs", tracks: "location-tracks",
+  positions: "location-positions", shares: "location-shares",
 };
 
 export class HttpDataSource implements DataSource {

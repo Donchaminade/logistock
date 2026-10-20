@@ -1,5 +1,6 @@
 // Balayage mobile (360 px) : aucune page ne doit déborder horizontalement.
 import { chromium } from "playwright";
+import { acceptConsent, GEO } from "./consent.mjs";
 const BASE = process.env.BASE ?? "http://localhost:4173";
 const PAGES = {
   patron: ["/accueil/", "/besoins/", "/contrats/", "/contrats/fiche/?id=ct-017", "/contrats/fiche/?id=ct-014", "/transports/", "/transports/fiche/?id=tr-041", "/transports/fiche/?id=tr-036", "/stocks/", "/finances/", "/actions/", "/fournisseurs/", "/droits/", "/journal/", "/notifications/", "/profil/", "/plus/", "/recu/?id=av-017"],
@@ -13,10 +14,11 @@ const PAGES = {
 const b = await chromium.launch();
 let bad = 0, errs = [];
 for (const [role, list] of Object.entries(PAGES)) {
-  const ctx = await b.newContext({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true });
+  const ctx = await b.newContext({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true, ...GEO });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errs.push(`${role}: ${e.message}`));
   await p.goto(BASE + "/"); await p.getByTestId(`quick-${role}`).click(); await p.waitForURL("**/accueil/");
+  await acceptConsent(p);
   for (const path of list) {
     await p.goto(BASE + path); await p.waitForTimeout(500);
     const r = await p.evaluate(() => {

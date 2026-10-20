@@ -1,6 +1,6 @@
 import {
-  Bell, BadgePercent, ClipboardCheck, Download, FileText, Handshake, History, LayoutDashboard, Map, MoreHorizontal, PackageCheck,
-  PackagePlus, Receipt, Route, ScrollText, Settings, ShieldCheck, Truck, User as UserIcon, UserCog, Users, Wallet, Warehouse, Wrench,
+  Bell, BadgePercent, ClipboardCheck, Download, FileCheck2, FileText, Handshake, History, LayoutDashboard, LocateFixed, Map, MoreHorizontal, PackageCheck,
+  PackagePlus, Receipt, Route, ScrollText, Settings, Shield, ShieldCheck, Truck, User as UserIcon, UserCog, Users, Wallet, Warehouse, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
@@ -38,6 +38,10 @@ const I = {
   notifications: { href: "/notifications/", label: "Notifications", icon: Bell, badge: "notifications" as const },
   profil: { href: "/profil/", label: "Profil", icon: UserIcon },
   plus: { href: "/plus/", label: "Plus", icon: MoreHorizontal },
+  personnel: { href: "/personnel/", label: "Personnel suivi", icon: LocateFixed },
+  consentements: { href: "/consentements/", label: "Consentements", icon: FileCheck2 },
+  confidentialite: { href: "/confidentialite/", label: "Confidentialité", icon: Shield },
+  connexions: { href: "/connexions/", label: "Mes connexions", icon: History },
 } satisfies Record<string, NavItem>;
 
 const as = (i: NavItem, label: string): NavItem => ({ ...i, label });
@@ -46,16 +50,16 @@ export const SIDEBAR: Record<Role, { group: string; items: NavItem[] }[]> = {
   patron: [
     { group: "Pilotage", items: [I.accueil, I.besoins, I.contrats, I.enlevements, I.transports, I.carte, I.stocks, I.reception] },
     { group: "Finances", items: [I.finances, I.commissions, I.charges, I.exports] },
-    { group: "Contrôle", items: [I.actions, as(I.fournisseurs, "Comptes"), I.utilisateurs, I.droits, I.parametres, I.journal] },
+    { group: "Contrôle", items: [I.actions, as(I.fournisseurs, "Comptes"), I.utilisateurs, I.personnel, I.consentements, I.droits, I.parametres, I.journal] },
   ],
   admin: [
-    { group: "Administration", items: [I.accueil, I.utilisateurs, I.parametres, I.droits, I.journal] },
+    { group: "Administration", items: [I.accueil, I.utilisateurs, I.personnel, I.consentements, I.parametres, I.droits, I.journal] },
     { group: "Opérations", items: [I.fournisseurs, I.besoins, I.contrats, I.enlevements, I.transports, I.carte, I.reception] },
     { group: "Finances", items: [I.finances, I.commissions, I.charges, I.exports, as(I.actions, "Actions à confirmer")] },
   ],
   gestionnaire: [
     { group: "Terrain", items: [I.accueil, I.contrats, I.enlevements, I.transports, I.carte, I.stocks, I.reception, as(I.besoins, "Besoins")] },
-    { group: "Suivi", items: [as(I.actions, "Mes demandes"), as(I.fournisseurs, "Fournisseurs"), I.charges] },
+    { group: "Suivi", items: [I.personnel, as(I.actions, "Mes demandes"), as(I.fournisseurs, "Fournisseurs"), I.charges] },
   ],
   fournisseur: [
     { group: "Mon espace", items: [I.accueil, as(I.contrats, "Mes contrats"), I.declarer, I.releve, as(I.besoins, "Besoins du patron"), as(I.transports, "Mes transports"), as(I.commissions, "Mes commissions")] },
@@ -68,7 +72,7 @@ export const SIDEBAR: Record<Role, { group: string; items: NavItem[] }[]> = {
   ],
   comptable: [
     { group: "Comptabilité", items: [I.accueil, I.finances, I.commissions, I.charges, I.exports] },
-    { group: "Consultation", items: [I.contrats, I.transports, I.stocks, as(I.fournisseurs, "Fournisseurs"), I.journal, as(I.parametres, "Paramètres (lecture)"), as(I.actions, "Actions à confirmer")] },
+    { group: "Consultation", items: [I.personnel, I.contrats, I.transports, I.stocks, as(I.fournisseurs, "Fournisseurs"), I.journal, as(I.parametres, "Paramètres (lecture)"), as(I.actions, "Actions à confirmer")] },
   ],
 };
 
@@ -105,6 +109,9 @@ export const ROUTE_ROLES: Record<string, Role[]> = {
   "/parametres": ["patron", "admin", "comptable"],
   "/droits": ["patron", "admin"],
   "/journal": ["patron", "admin", "comptable"],
+  "/personnel": ["patron", "admin", "gestionnaire", "comptable"],
+  "/consentements": ["patron", "admin"],
+  "/suivi": ["patron", "gestionnaire", "comptable"],
 };
 
 export function routeAllowed(path: string, role: Role) {

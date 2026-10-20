@@ -2,6 +2,7 @@
 // hors ligne (file d'attente + PWA), vérification de signature, commissions, exports (Playwright, Chromium).
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { acceptConsent, GEO } from "./consent.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:4173";
 const SHOTS = process.env.SHOTS ?? new URL("./captures", import.meta.url).pathname;
@@ -17,7 +18,7 @@ const KEY = "logistock:db:v2";
 
 const browser = await chromium.launch();
 const newCtx = async () => {
-  const c = await browser.newContext({ acceptDownloads: true, locale: "fr-FR", timezoneId: "Africa/Lome" });
+  const c = await browser.newContext({ acceptDownloads: true, locale: "fr-FR", timezoneId: "Africa/Lome", ...GEO });
   c.on("request", (r) => { const u = new URL(r.url()); if (!["localhost", "127.0.0.1"].includes(u.hostname) && !u.protocol.startsWith("data") && !u.protocol.startsWith("blob")) external.add(r.url()); });
   return c;
 };
@@ -38,6 +39,7 @@ async function login(p, role) {
   await p.goto(BASE + "/");
   await p.getByTestId(`quick-${role}`).click();
   await p.waitForURL("**/accueil/");
+  await acceptConsent(p);
   await p.waitForTimeout(400);
 }
 async function loginForm(p, phone, password) {
@@ -330,6 +332,7 @@ ok("Service worker actif, cache de précache créé", await W.evaluate(() => !!n
 await W.reload();
 await W.getByTestId("quick-gestionnaire").click();
 await W.waitForURL("**/accueil/");
+await acceptConsent(W);
 await ctx2.setOffline(true);
 await W.reload();
 await W.waitForTimeout(800);

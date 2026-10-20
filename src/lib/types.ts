@@ -31,6 +31,8 @@ export interface User extends Entity {
   lockedUntil?: string;
   createdAt: string;
   createdBy?: Id;
+  /** Gestionnaire dont cet employé fait partie de l'équipe. */
+  managerId?: Id;
 }
 
 /** Appareil autorisé : code PIN pour déverrouiller, y compris hors ligne (US-01, §6.5). */
@@ -479,6 +481,11 @@ export interface AuditEntry extends Entity {
   /** SHA-256 (hex) du contenu de la ligne et du hash de la ligne précédente. */
   hash: string;
   prevHash: string;
+  /** Position jointe à une remise, une transmission ou une modification de compte. */
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  positionNote?: string;
 }
 
 export type PermEntity =
@@ -513,6 +520,88 @@ export interface Settings extends Entity {
   resalePrice: Record<Product, number>;
   commissionRules: CommissionRule[];
   seededAt: string;
+  /** Employés que le comptable est autorisé à suivre. Réservé au patron. */
+  comptableTrackScope: Id[];
+  /** Seuils de vitesse du marqueur (m/s) : repos, marche, course, puis moto en mode automatique. */
+  speedStopMps: number;
+  speedWalkMps: number;
+  speedFastMps: number;
+}
+
+export type MarkerChoice = "auto" | "marche" | "course" | "moto" | "voiture";
+
+/** Preuve de consentement à la localisation (ou de son retrait). */
+export interface LocationConsent extends Entity {
+  userId: Id;
+  policyVersion: string;
+  granted: boolean;
+  at: string;
+  userAgent: string;
+  /** Image de la signature dessinée. Absente en cas de retrait. */
+  signature?: string;
+}
+
+export type PositionStatus = "ok" | "refusee" | "indisponible" | "timeout" | "sans_consentement";
+
+/** Journal de connexion : horaire, compte, position et motif d'échec. */
+export interface LoginLog extends Entity {
+  userId?: Id;
+  account: string;
+  at: string;
+  success: boolean;
+  reason?: string;
+  method: "mot_de_passe" | "pin";
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  positionStatus: PositionStatus;
+  userAgent: string;
+}
+
+/** Suivi de sécurité d'un employé. S'arrête au plus tard 30 jours après l'activation. */
+export interface LocationTrack extends Entity {
+  subjectId: Id;
+  by: Id;
+  reason: string;
+  startedAt: string;
+  expiresAt: string;
+  active: boolean;
+  endedAt?: string;
+  endedBy?: Id | "system";
+  endReason?: string;
+  markerMode: MarkerChoice;
+  /** Utilisateurs, autres que le patron, autorisés à créer un lien de partage. */
+  shareUserIds: Id[];
+}
+
+/** Dernière position publiée tant que l'application est ouverte. */
+export interface GeoPing extends Entity {
+  userId: Id;
+  lat: number;
+  lng: number;
+  accuracy: number;
+  at: string;
+  prevLat?: number;
+  prevLng?: number;
+  prevAt?: string;
+  speedMps?: number;
+  headingDeg?: number;
+  context: "suivi" | "livraison";
+  transportId?: Id;
+  live: boolean;
+}
+
+/** Lien temporaire de consultation en lecture seule. */
+export interface TrackShare extends Entity {
+  trackId: Id;
+  token: string;
+  recipientName: string;
+  reason: string;
+  by: Id;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+  revokedBy?: Id;
 }
 
 /** Instantané complet des données, tel que le reçoit l'interface. */
@@ -544,6 +633,11 @@ export interface Database {
   audit: AuditEntry[];
   outbox: OutboxItem[];
   settings: Settings[];
+  consents: LocationConsent[];
+  loginLogs: LoginLog[];
+  tracks: LocationTrack[];
+  positions: GeoPing[];
+  shares: TrackShare[];
 }
 
 export type Collection = keyof Database;

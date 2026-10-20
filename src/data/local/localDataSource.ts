@@ -20,6 +20,25 @@ function backfillDemoEmails(db: Database): Database {
   });
   return changed ? { ...db, users } : db;
 }
+
+/** Anciennes démos : champs de localisation et rattachements d'équipe. */
+function backfillLocation(db: Database): Database {
+  const managers: Record<string, string> = { "u-mawuli": "u-edem", "u-yao": "u-yawa" };
+  let changed = false;
+  const users = db.users.map((u) => {
+    const managerId = managers[u.id];
+    if (!managerId || u.managerId) return u;
+    changed = true;
+    return { ...u, managerId };
+  });
+  const s = db.settings[0];
+  let settings = db.settings;
+  if (s && (s.comptableTrackScope == null || s.speedStopMps == null || s.speedWalkMps == null || s.speedFastMps == null)) {
+    changed = true;
+    settings = [{ ...s, comptableTrackScope: s.comptableTrackScope ?? [], speedStopMps: s.speedStopMps ?? 0.5, speedWalkMps: s.speedWalkMps ?? 1.8, speedFastMps: s.speedFastMps ?? 7 }];
+  }
+  return changed ? { ...db, users, settings } : db;
+}
 const DEVICE_KEY = "logistock:device";
 const SESSION_KEY = "logistock:session";
 const CHANNEL = "logistock-sync";
@@ -28,6 +47,7 @@ export const COLLECTIONS: Collection[] = [
   "users", "devices", "needs", "offers", "contracts", "revisions", "advances", "locations", "vehicles", "drivers", "pickups",
   "transports", "traces", "checkins", "deliveries", "partials", "declarations", "payments", "expenses", "adjustments",
   "commissions", "debts", "notifications", "pending", "audit", "outbox", "settings",
+  "consents", "loginLogs", "tracks", "positions", "shares",
 ];
 
 export class LocalDataSource implements DataSource {
@@ -99,7 +119,7 @@ export class LocalDataSource implements DataSource {
       // Données d'une version antérieure : collections manquantes ajoutées vides.
       for (const k of COLLECTIONS) if (!Array.isArray(db[k])) (db[k] as unknown[]) = [];
       if (!db.settings?.length) return null;
-      const migrated = backfillDemoEmails(db);
+      const migrated = backfillLocation(backfillDemoEmails(db));
       if (migrated !== db) window.localStorage.setItem(KEY, JSON.stringify(migrated));
       return migrated;
     } catch {

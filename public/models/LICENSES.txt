@@ -1,0 +1,14 @@
+personne.glb — Quaternius, Universal Animation Library. CC0.
+https://quaternius.com/packs/universalanimationlibrary.html
+Miroir : https://github.com/J-Ponzo/gltf-universal-animation-library
+Animations conservées : Idle_Loop, Walk_Loop, Jog_Fwd_Loop.
+
+moto.glb — Kenney, vehicle-motorcycle (Starter Kit Racing). Modèles 3D CC0.
+https://github.com/KenneyNL/Starter-Kit-Racing
+L'échappement en particules n'est pas dans le fichier : il est dessiné par l'application.
+
+voiture.glb — Kenney, Car Kit, sedan.glb. CC0.
+https://kenney.nl/assets/car-kit
+https://opengameart.org/content/car-kit
+
+Les fichiers du dépôt sont compressés avec gltf-transform (meshopt). Mixamo n'est pas utilisé.

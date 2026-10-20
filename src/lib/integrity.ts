@@ -34,7 +34,7 @@ export async function verifyReceipt(db: Database, a: Advance, printedHash?: stri
 
 // ——— Journal d'audit (ajout seul, chaîné) ———
 export function auditContent(e: Omit<AuditEntry, "hash" | "prevHash" | "id">) {
-  return { at: e.at, by: e.by, action: e.action, entity: e.entity, entityId: e.entityId, detail: e.detail, before: e.before, after: e.after, device: e.device };
+  return { at: e.at, by: e.by, action: e.action, entity: e.entity, entityId: e.entityId, detail: e.detail, before: e.before, after: e.after, device: e.device, lat: e.lat, lng: e.lng, accuracy: e.accuracy, positionNote: e.positionNote };
 }
 export function auditHash(prevHash: string, e: Omit<AuditEntry, "hash" | "prevHash" | "id">) {
   return sha256Hex(`${prevHash}|${canonical(auditContent(e))}`);

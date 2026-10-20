@@ -7,6 +7,8 @@ import { can } from "@/lib/permissions";
 import { prixKg, ruleText, tonnes } from "@/lib/format";
 import type { CommissionRule, Location } from "@/lib/types";
 import { addDriver, addLocation, addVehicle, saveCommissionRule, updateSettings } from "@/services/actions";
+import { isEmployeeRole } from "@/lib/trackPermissions";
+import { saveComptableScope, saveSpeedThresholds, setManager } from "@/services/location";
 
 const LOC_TYPE = { origine: "Origine", etape: "Étape", destination: "Destination", autre: "Autre" } as const;
 
@@ -14,12 +16,13 @@ export default function Parametres() {
   const { db, me } = useApp();
   const perms = db.settings[0]!.perms;
   const edit = can(perms, me, "parametres", "u");
-  const [tab, setTab] = useState<"seuils" | "commissions" | "vehicules" | "lieux">("seuils");
+  const [tab, setTab] = useState<"seuils" | "commissions" | "vehicules" | "lieux" | "localisation">("seuils");
   return (
     <>
       <PageHeader eyebrow="Administration" title="Paramètres" sub={edit ? "Seuils d'alerte, sécurité, règles de commission et référentiels. Chaque modification est tracée dans le journal." : "Lecture seule pour votre rôle."} />
-      <Tabs value={tab} onChange={setTab} tabs={[{ value: "seuils", label: "Seuils et sécurité" }, { value: "commissions", label: "Commissions", count: db.settings[0]!.commissionRules.length }, { value: "vehicules", label: "Véhicules et chauffeurs", count: db.vehicles.filter((v) => !v.deleted).length }, { value: "lieux", label: "Lieux", count: db.locations.filter((l) => !l.deleted).length }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ value: "seuils", label: "Seuils et sécurité" }, { value: "localisation", label: "Localisation" }, { value: "commissions", label: "Commissions", count: db.settings[0]!.commissionRules.length }, { value: "vehicules", label: "Véhicules et chauffeurs", count: db.vehicles.filter((v) => !v.deleted).length }, { value: "lieux", label: "Lieux", count: db.locations.filter((l) => !l.deleted).length }]} />
       {tab === "seuils" && <Seuils edit={edit} />}
+      {tab === "localisation" && <Localisation edit={edit} />}
       {tab === "commissions" && <Rules edit={edit} />}
       {tab === "vehicules" && <Vehicles edit={can(perms, me, "vehicules", "c")} />}
       {tab === "lieux" && <Lieux edit={can(perms, me, "lieux", "c")} />}
@@ -213,6 +216,61 @@ function Lieux({ edit }: { edit: boolean }) {
         </Card>
       )}
       <p className="text-[12.5px] text-muted lg:col-span-2">Prix de revente : soja {prixKg(db.settings[0]!.resalePrice.soja)}, cacao {prixKg(db.settings[0]!.resalePrice.cacao)}.</p>
+    </div>
+  );
+}
+
+function Localisation({ edit }: { edit: boolean }) {
+  const { db, me, run } = useApp();
+  const s = db.settings[0]!;
+  const [speed, setSpeed] = useState({ stop: String(s.speedStopMps), walk: String(s.speedWalkMps), fast: String(s.speedFastMps) });
+  const employees = db.users.filter((u) => !u.deleted && isEmployeeRole(u.role));
+  const managers = db.users.filter((u) => !u.deleted && u.role === "gestionnaire");
+  const n = (v: string) => Number(v.replace(",", "."));
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card>
+        <CardTitle title="Seuils du marqueur (m/s)" sub="Repos, puis marche, puis course. Au-delà, le mode automatique passe à la moto." />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Repos"><Input inputMode="decimal" value={speed.stop} disabled={!edit} onChange={(e) => setSpeed({ ...speed, stop: e.target.value })} /></Field>
+          <Field label="Marche"><Input inputMode="decimal" value={speed.walk} disabled={!edit} onChange={(e) => setSpeed({ ...speed, walk: e.target.value })} /></Field>
+          <Field label="Course"><Input inputMode="decimal" value={speed.fast} disabled={!edit} onChange={(e) => setSpeed({ ...speed, fast: e.target.value })} /></Field>
+        </div>
+        {edit && <Button className="mt-4" icon={<Save className="size-4" />} data-testid="speed-save" onClick={() => run(() => saveSpeedThresholds(me, n(speed.stop), n(speed.walk), n(speed.fast)), "Seuils enregistrés")}>Enregistrer les seuils</Button>}
+      </Card>
+      <Card>
+        <CardTitle title="Périmètre du comptable" sub="Seul le patron coche les employés que le comptable peut suivre." />
+        {me.role !== "patron" && <p className="text-[13.5px] text-muted">Lecture seule.</p>}
+        <ul className="mt-2 space-y-2">
+          {employees.map((u) => (
+            <li key={u.id}>
+              <label className="flex items-center gap-2 text-[14px]">
+                <input type="checkbox" className="size-4 accent-brand-600" disabled={me.role !== "patron"} checked={s.comptableTrackScope.includes(u.id)} onChange={(e) => {
+                  const ids = e.target.checked ? [...s.comptableTrackScope, u.id] : s.comptableTrackScope.filter((id) => id !== u.id);
+                  void run(() => saveComptableScope(me, ids), "Périmètre enregistré");
+                }} />
+                {u.name}
+              </label>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      {me.role === "patron" && (
+        <Card className="lg:col-span-2">
+          <CardTitle title="Équipes des gestionnaires" sub="Un gestionnaire ne suit que les employés qui lui sont rattachés." />
+          <ul className="divide-y divide-line">
+            {employees.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center gap-3 py-2">
+                <span className="min-w-40 flex-1 font-semibold">{u.name}</span>
+                <Select className="max-w-xs" value={u.managerId ?? ""} onChange={(e) => void run(() => setManager(me, u.id, e.target.value || undefined), "Équipe mise à jour")}>
+                  <option value="">Aucun</option>
+                  {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </Select>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

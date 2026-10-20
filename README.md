@@ -10,7 +10,8 @@ Maquette **front uniquement** de LogiStock, l'application de gestion des préfin
 - SweetAlert2 pour toutes les confirmations, validations, erreurs et notifications (toasts).
 - jsPDF et jspdf-autotable pour les reçus, relevés, exports et le rapport mensuel ; write-excel-file pour les exports Excel (.xlsx générés dans le navigateur).
 - @noble/hashes et @noble/curves (repli) pour SHA-256 et Ed25519 ; WebCrypto quand le navigateur le permet.
-- Leaflet pour les cartes, avec un fond schématique local (aucune tuile chargée tant que l'utilisateur ne coche pas « Fond OpenStreetMap »).
+- Leaflet pour les cartes schématiques des lots et des trajets (aucune tuile chargée tant que l'utilisateur ne coche pas « Fond OpenStreetMap »).
+- MapLibre GL et Three.js pour les cartes de suivi en direct (plan OpenStreetMap ou satellite Esri). Les modèles 3D ne sont chargés que sur ces écrans.
 - **PWA** installable : manifeste, icônes, service worker qui précache tout le site au build.
 
 ## Lancer en local
@@ -123,6 +124,39 @@ Le patron règle les droits de création, de lecture, de modification et de supp
 
 - **Exports** : stocks, dettes et contrats en Excel (.xlsx) ou en PDF, plus un classeur complet. Le **rapport mensuel du patron** (PDF) se filtre par mois et par produit. Tout est généré dans le navigateur, sans serveur.
 - **Carte des lots** et carte de chaque trajet : fond schématique local du Togo, lieux, stocks déclarés et trajets en cours. Le fond OpenStreetMap est facultatif. Il n'est demandé que si l'utilisateur coche la case et que le réseau est disponible ; sinon, la carte reste utilisable.
+
+### Localisation
+
+La position n'est lue que pendant que l'application est ouverte, et seulement après le consentement de la version en vigueur. Le navigateur ne permet pas de suivre un téléphone dont l'application est fermée.
+
+Base légale, dans cette maquette : le **consentement**, au sens de la loi togolaise **n°2019-014 du 29 octobre 2019** relative à la protection des données à caractère personnel. Le texte (version `2026-10-20.3`) est affiché à la première utilisation et reste lisible dans **Confidentialité / localisation**, où l'on peut le retirer. L'acceptation exige la lecture jusqu'au bout, une case et une signature dessinée. Chaque preuve (personne, date, version, signature, user-agent) est conservée. Le patron et l'administrateur les consultent dans **Consentements**.
+
+Usages :
+
+- journal de connexion (heure, compte, position et précision, ou motif d'échec) — **Mes connexions** ;
+- position jointe au journal d'audit quand on enregistre une remise ou une transmission, ou qu'on modifie un compte (pas de règlement dans l'application : LogiStock note ce qui a déjà eu lieu) ;
+- suivi de livraison sur la fiche du lot en route, après un clic « Afficher la carte » ;
+- suivi de sécurité. Le patron suit tous les employés côté acheteur. Un gestionnaire ne suit que son équipe. Le comptable ne suit que le périmètre coché par le patron (**Paramètres → Localisation**). Le bouton est dans **Personnel suivi**. Le motif est obligatoire, le suivi s'arrête au bout de 30 jours, et la personne voit le bandeau « Localisation partagée pour vérification de sécurité ». L'activation, chaque consultation et l'arrêt sont audités.
+
+Le patron, ou une personne qu'il a explicitement autorisée, peut créer un **lien de consultation** (destinataire nommé, motif, 2 heures par défaut, 24 heures au plus). La page `/partage/?jeton=…` est en lecture seule. Le lien se révoque, et il meurt avec le suivi. Création, ouverture et révocation sont auditées.
+
+Durées indiquées dans le texte : preuve de consentement 5 ans après le retrait ou la fin du compte ; journal de connexion 12 mois ; position d'une écriture 5 ans ; positions d'un suivi le temps du suivi (30 jours au plus) puis trace d'audit 12 mois ; position de livraison jusqu'à la clôture du lot puis 12 mois ; lien le temps choisi, trace 12 mois.
+
+**Cartes de suivi.** Les plans des lots restent en Leaflet, pour ne pas charger de tuile sur les écrans qui n'en ont pas besoin. Les cartes en direct (suivi, lien, fiche de livraison) utilisent **MapLibre GL** avec une seule couche **Three.js** : tous les marqueurs partagent le contexte WebGL de la carte. Deux fonds, avec leur attribution : plan OpenStreetMap et satellite Esri World Imagery. Si WebGL manque, la carte retombe sur des tuiles Leaflet. Si `prefers-reduced-motion` est actif, MapLibre reste, avec un cercle fixe à la place du modèle. L'animation s'arrête quand l'onglet est caché.
+
+Le modèle suit la vitesse réelle (repos, marche, course, moto), avec des seuils réglables. Le suiveur peut forcer marche, course, moto ou voiture, ou laisser le mode automatique. Le cap oriente le modèle, et la position est interpolée entre deux relevés GPS.
+
+**Modèles 3D** (CC0, redistribuables, compressés en meshopt, chargés à la demande depuis `public/models/`) :
+
+| Fichier | Rôle | Source | Licence |
+|---|---|---|---|
+| `personne.glb` | personne au repos, en marche et en course (`Idle_Loop`, `Walk_Loop`, `Jog_Fwd_Loop`) | [Quaternius — Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html), miroir [gltf-universal-animation-library](https://github.com/J-Ponzo/gltf-universal-animation-library) | CC0 |
+| `moto.glb` | moto ; l'échappement en particules est du code Three.js, pas un fichier tiers | [Kenney — vehicle-motorcycle](https://github.com/KenneyNL/Starter-Kit-Racing) (modèles 3D CC0, voir le README du dépôt) | CC0 |
+| `voiture.glb` | voiture, roues animées par le mouvement | [Kenney — Car Kit](https://kenney.nl/assets/car-kit), aussi sur [OpenGameArt](https://opengameart.org/content/car-kit) | CC0 |
+
+Mixamo n'est pas utilisé : sa licence n'autorise pas à redistribuer les fichiers dans un dépôt.
+
+Ce qui manque pour la production : un serveur qui revérifie les rôles, conserve les preuves, signe et horodate. Les ressources prévues sont `location-consents`, `login-logs`, `location-tracks`, `location-positions` et `location-shares` sous `/api/v1`. Le temps réel remplacerait le rafraîchissement local. Le serveur ne peut pas non plus suivre une application fermée.
 
 ## Charte graphique
 

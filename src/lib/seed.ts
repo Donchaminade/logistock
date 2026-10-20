@@ -31,9 +31,11 @@ function chain(events: Omit<TraceEvent, "hash" | "prevHash">[]): TraceEvent[] {
 export function buildSeed(): Database {
   const now = new Date().toISOString();
   const zone = { "u-kossi": "Badou", "u-jamilana": "Atakpamé", "u-afi": "Notsé", "u-yawa": "Kaboli", "u-edem": "Lomé", "u-mawuli": "Lomé" } as Record<string, string>;
+  const managers: Record<string, string> = { "u-mawuli": "u-edem", "u-yao": "u-yawa" };
   const users = [...DEMO_ACCOUNTS, ...OTHER_ACCOUNTS].map((a) => ({
     ...a,
     zone: zone[a.id],
+    managerId: managers[a.id],
     active: true,
     createdAt: d("2026-08-01T09:00:00Z"),
     createdBy: a.role === "patron" ? undefined : "u-patron",
@@ -201,6 +203,11 @@ export function buildSeed(): Database {
     devices: [],
     outbox: [],
     settings: [defaultSettings(now)],
+    consents: [],
+    loginLogs: [],
+    tracks: [],
+    positions: [],
+    shares: [],
   };
 }
 
@@ -215,6 +222,10 @@ export function defaultSettings(now = new Date().toISOString()): Settings {
       { id: "cr-forfait", label: "Forfait 50 000 FCFA par contrat (versée)", mode: "forfait", value: 50000, settlement: "versee", active: true },
     ],
     seededAt: now,
+    comptableTrackScope: [],
+    speedStopMps: 0.5,
+    speedWalkMps: 1.8,
+    speedFastMps: 7,
   };
 }
 

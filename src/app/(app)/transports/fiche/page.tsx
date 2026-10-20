@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, MapPinPlus, Route, Scale, ShieldCheck, Trash2, Truck, Warehouse } from "lucide-react";
@@ -16,6 +17,9 @@ import type { TraceEvent, Transport, TraceType } from "@/lib/types";
 import { verifyTraceChain } from "@/lib/integrity";
 import { addTraceEvent, checkinLome, receiveDelivery, requestDelete, weighAndReceive } from "@/services/actions";
 import { isOnline } from "@/services/network";
+import { thresholdsOf } from "@/services/location";
+
+const TrackMap = dynamic(() => import("@/components/location/TrackMap").then((m) => m.TrackMap), { ssr: false });
 
 const PENDING_SYNC = "Enregistré sur l'appareil, <b>en attente de synchronisation</b> : l'envoi se fera automatiquement au retour du réseau.";
 
@@ -29,6 +33,7 @@ function Fiche({ id }: { id: string }) {
   const { db, me, run } = useApp();
   const router = useRouter();
   const [modal, setModal] = useState<null | "etape" | "pointage" | "pesee">(null);
+  const [showLive, setShowLive] = useState(false);
   const t = db.transports.find((x) => x.id === id);
   const c = t && db.contracts.find((x) => x.id === t.contractId);
   const myDriver = db.drivers.find((d) => d.userId === me.id);
@@ -84,6 +89,25 @@ function Fiche({ id }: { id: string }) {
           <Timeline events={events} threshold={db.settings[0]!.weightGapThresholdPct} done={t.status === "receptionne"} />
         </Card>
         <div className="space-y-6">
+          {t.status === "en_route" && (
+            <Card className="animate-in">
+              <CardTitle title="Position pendant la livraison" sub="Livreur ou fournisseur, tant que leur application est ouverte." />
+              {!showLive ? (
+                <Button variant="secondary" data-testid="btn-delivery-map" onClick={() => setShowLive(true)}>Afficher la carte</Button>
+              ) : (
+                <TrackMap
+                  markers={[t.driverId && db.drivers.find((d) => d.id === t.driverId)?.userId, c.supplierId].filter((x): x is string => !!x).flatMap((uid) => {
+                    const ping = db.positions.find((p) => p.userId === uid && !p.deleted);
+                    const u = db.users.find((x) => x.id === uid);
+                    if (!ping || !u) return [];
+                    return [{ id: uid, name: u.name, lat: ping.lat, lng: ping.lng, speedMps: ping.speedMps ?? 0, headingDeg: ping.headingDeg ?? 0, choice: "auto" as const, live: ping.live }];
+                  })}
+                  thresholds={thresholdsOf(db)}
+                  className="h-72"
+                />
+              )}
+            </Card>
+          )}
           <Card className="animate-in" pad={false}>
             <div className="p-5 pb-3"><CardTitle title="Carte du trajet" sub="Lieux connus de la table des lieux" icon={<Route className="size-[18px]" />} /></div>
             <RouteMap places={[...events.map((e) => e.place), ...(pickup?.route.filter((r) => !r.passedAt).map((r) => r.place) ?? []), "Lomé · magasin central"]} passed={events.length} className="h-56" />

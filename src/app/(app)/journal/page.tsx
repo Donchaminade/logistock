@@ -49,6 +49,7 @@ export default function Journal() {
         { key: "u", header: "Utilisateur", mobile: "sub", render: (a) => `${a.by === "system" ? "Système" : nameOf(db, a.by)}${a.device ? ` · ${a.device.length > 20 ? a.device.slice(0, 8) : a.device}` : ""}` },
         { key: "a", header: "Action", mobile: "title", render: (a) => <span className="font-semibold">{a.action}</span> },
         { key: "x", header: "Détail", mobile: "meta", render: (a) => <div className="max-w-md"><span className="line-clamp-2 text-[13px] text-muted">{a.detail || "—"}</span><Values a={a} /></div> },
+        { key: "g", header: "Position", mobile: "hide", render: (a) => a.lat != null ? <span className="num text-[12px]">{a.lat.toFixed(4)}, {a.lng?.toFixed(4)}{a.accuracy != null ? ` ±${Math.round(a.accuracy)} m` : ""}</span> : <span className="line-clamp-2 text-[12px] text-muted">{a.positionNote ?? "—"}</span> },
         { key: "h", header: "SHA-256", mobile: "hide", render: (a) => <code className="font-mono text-[11px] text-subtle" title={a.hash}>{a.hash.slice(0, 12)}</code> },
       ]} />
     </>

@@ -1,11 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, CloudOff, Lock, LogOut, RefreshCw, RotateCcw, Wifi } from "lucide-react";
-import { resetDemo } from "@/services/actions";
+import { changePassword, resetDemo } from "@/services/actions";
+import { consentGranted } from "@/lib/locationPolicy";
+import { ConsentGate } from "./location/ConsentGate";
+import { LocationBanner } from "./location/LocationBanner";
+import { LiveShare } from "./location/LiveShare";
+import { expireTracks } from "@/services/location";
 import { roleLabel } from "@/lib/format";
-import { choose, confirm, toast } from "./alerts";
+import { askText, choose, confirm, toast } from "./alerts";
 import { forMe, useData } from "./DataProvider";
 import { Logo, LogoMark } from "./Logo";
 import { BOTTOM, routeAllowed, SIDEBAR, type NavItem } from "./nav";
@@ -42,13 +47,36 @@ export async function confirmReset(router: ReturnType<typeof useRouter>) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { db, me, ready, signOut } = useData();
+  const { db, me, ready, signOut, refresh } = useData();
   const path = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (ready && !me) router.replace("/");
   }, [ready, me, router]);
+
+  const granted = !!(me && db && consentGranted(db.consents, me.id));
+  const pwdAsked = useRef(false);
+  useEffect(() => {
+    if (!me) return;
+    void expireTracks().catch(() => undefined);
+  }, [me?.id]);
+  useEffect(() => {
+    if (!granted || !me?.mustChangePassword || pwdAsked.current) return;
+    pwdAsked.current = true;
+    void (async () => {
+      const np = await askText({
+        title: "Choisissez votre mot de passe",
+        html: "Première connexion : remplacez le mot de passe provisoire remis par le patron.",
+        input: "password",
+        placeholder: "Nouveau mot de passe (6 caractères min.)",
+        allowCancel: false,
+        validate: (v) => (v.length < 6 ? "6 caractères minimum." : undefined),
+      });
+      if (np) await changePassword(me, np);
+      await refresh();
+    })();
+  }, [granted, me, refresh]);
 
   if (!ready || !me || !db) {
     return (
@@ -58,6 +86,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (!granted) return <ConsentGate />;
+
   const pending = db.pending.filter((p) => p.status === "en_attente" && (me.role === "patron" || p.by === me.id)).length;
   const unread = db.notifications.filter((n) => forMe(n, me) && !n.readBy.includes(me.id)).length;
   const badgeOf = (i: NavItem) => (i.badge === "pending" ? pending : i.badge === "notifications" ? unread : 0);
@@ -66,6 +96,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh lg:pl-[272px]">
+      <LiveShare />
+      <LocationBanner />
       {/* Barre latérale (ordinateur) */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] flex-col bg-ink text-white lg:flex">
         <div className="px-6 pb-6 pt-7">

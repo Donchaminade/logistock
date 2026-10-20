@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { dataSource } from "@/data";
 import type { AppNotification, Database, User } from "@/lib/types";
 import { logout } from "@/services/auth";
+import { pullGeoNotice } from "@/services/location";
 import { syncOutbox } from "@/services/core";
 import { isOnline, onNetworkChange } from "@/services/network";
 import { fail, toast } from "./alerts";
@@ -84,6 +85,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const r = await fn();
       if (okTitle) toast(okTitle, okText);
+      const note = pullGeoNotice();
+      if (note) toast("Position non capturée", note, "info");
       return r;
     } catch (e) {
       await fail(e);

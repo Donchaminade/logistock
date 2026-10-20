@@ -32,7 +32,13 @@ const CLIPS: Record<"idle" | "walk" | "run", string> = {
 
 /** Cap 0 = nord. Le modèle regarde +Z ; après rotX(π/2), +Z devient le nord. Le cap géographique tourne dans l'autre sens que Y. */
 const YAW: Record<"person" | "moto" | "car", number> = { person: 0, moto: 0, car: 0 };
-const SCALE: Record<"person" | "moto" | "car", number> = { person: 1, moto: 1.35, car: 2.3 };
+/** Hauteur d'origine du fichier, en unités. Le marqueur vise une taille à l'écran, pas l'échelle 1:1 (invisible à l'échelle d'une ville). */
+const UNIT_HEIGHT: Record<Kind, number> = { person: 1.75, moto: 1.15, car: 1.35 };
+const TARGET_PX: Record<Kind, number> = { person: 84, moto: 78, car: 92 };
+
+function metersForPixels(lat: number, zoom: number, px: number) {
+  return (156543.03392 * Math.cos((lat * Math.PI) / 180) / 2 ** zoom) * px;
+}
 
 type Kind = "person" | "moto" | "car";
 
@@ -60,8 +66,22 @@ function prep(root: THREE.Object3D) {
     if (!mesh.isMesh) return;
     mesh.frustumCulled = false;
     mesh.castShadow = false;
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const m of mats) m.side = THREE.DoubleSide;
+    const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next = list.map((src) => {
+      const mat = src as THREE.MeshStandardMaterial;
+      mat.side = THREE.DoubleSide;
+      if (!mat.map) return mat;
+      // Les matériaux éclairés texturés ne sortent pas dans le contexte WebGL partagé.
+      const basic = new THREE.MeshBasicMaterial({
+        map: mat.map,
+        color: mat.color?.clone() ?? new THREE.Color(0xffffff),
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      });
+      if (basic.map) basic.map.colorSpace = THREE.SRGBColorSpace;
+      return basic;
+    });
+    mesh.material = Array.isArray(mesh.material) ? next : next[0]!;
   });
 }
 
@@ -129,14 +149,14 @@ export function createMarkerLayer(map: MlMap, read: () => { markers: SceneMarker
 
   function place(actor: Actor, lat: number, lng: number, heading: number) {
     const mc = MercatorCoordinate.fromLngLat([lng, lat], 0);
-    const meters = mc.meterInMercatorCoordinateUnits() * SCALE[actor.kind];
+    const meters = metersForPixels(lat, map.getZoom(), TARGET_PX[actor.kind]) / UNIT_HEIGHT[actor.kind];
+    const unit = mc.meterInMercatorCoordinateUnits() * meters;
     const m = new THREE.Matrix4();
+    // Même composition que l'exemple MapLibre : translation Mercator, échelle mètre (Y inversé), modèle Y-up → Z-up.
     m.makeTranslation(mc.x, mc.y, mc.z);
-    m.scale(new THREE.Vector3(meters, -meters, meters));
-    const rotX = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-    const yaw = -THREE.MathUtils.degToRad(heading) + YAW[actor.kind];
-    const rotY = new THREE.Matrix4().makeRotationY(yaw);
-    m.multiply(rotX).multiply(rotY);
+    m.scale(new THREE.Vector3(unit, -unit, unit));
+    m.multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+    m.multiply(new THREE.Matrix4().makeRotationY(-THREE.MathUtils.degToRad(heading) + YAW[actor.kind]));
     actor.root.matrixAutoUpdate = false;
     actor.root.matrix.copy(m);
     actor.root.matrixWorldNeedsUpdate = true;
@@ -147,8 +167,17 @@ export function createMarkerLayer(map: MlMap, read: () => { markers: SceneMarker
     const gltf = await loadGltf(URLS[kind]);
     const inner = cloneSkinned(gltf.scene) as THREE.Object3D;
     prep(inner);
+    inner.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(inner);
-    if (Number.isFinite(box.min.y)) inner.position.y -= box.min.y;
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const height = size.y;
+    if (Number.isFinite(height) && height > 1e-4) {
+      const fit = UNIT_HEIGHT[kind] / height;
+      inner.scale.multiplyScalar(fit);
+      inner.position.y -= box.min.y * fit;
+      inner.updateMatrix();
+    }
     const root = new THREE.Group();
     root.add(inner);
     const actor: Actor = {
@@ -190,6 +219,10 @@ export function createMarkerLayer(map: MlMap, read: () => { markers: SceneMarker
     actor.current = clip;
   }
 
+  const onVisible = () => {
+    if (!document.hidden) map.triggerRepaint();
+  };
+
   const layer: CustomLayerInterface & { ready: Promise<void>; dispose: () => void } = {
     id: "marqueurs-3d",
     type: "custom",
@@ -199,8 +232,10 @@ export function createMarkerLayer(map: MlMap, read: () => { markers: SceneMarker
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl });
       renderer.autoClear = false;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      document.addEventListener("visibilitychange", onVisible);
     },
     onRemove() {
+      document.removeEventListener("visibilitychange", onVisible);
       renderer?.dispose();
       renderer = null;
     },
@@ -270,13 +305,21 @@ export function createMarkerLayer(map: MlMap, read: () => { markers: SceneMarker
         actors.delete(id);
       }
       if (actors.size || !markers.length) resolveReady();
-      camera.projectionMatrix.fromArray(Array.from(options.modelViewProjectionMatrix as ArrayLike<number>));
-      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-      renderer.resetState();
-      renderer.render(scene, camera);
+      // modelViewProjectionMatrix est en pixels monde. mainMatrix projette le Mercator 0..1 (z conforme).
+      const main = options.defaultProjectionData?.mainMatrix;
+      if (main && main.length === 16) {
+        camera.matrix.identity();
+        camera.matrixWorld.identity();
+        camera.matrixWorldInverse.identity();
+        camera.projectionMatrix.fromArray(main);
+        camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+        renderer.resetState();
+        renderer.render(scene, camera);
+      }
       map.triggerRepaint();
     },
     dispose() {
+      document.removeEventListener("visibilitychange", onVisible);
       for (const actor of actors.values()) scene.remove(actor.root);
       actors.clear();
       renderer?.dispose();

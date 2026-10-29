@@ -151,6 +151,8 @@ export async function createNeed(me: User, input: { product: Product; qtyKg: num
   await requirePerm(me, "besoins", "c");
   posInt(input.qtyKg, "La quantité visée");
   posInt(input.indicativePrice, "Le prix indicatif");
+  const product = (await ds().repos.products.list()).find((p) => p.id === input.product && !p.deleted && !p.archived);
+  assert(product, "Choisissez un produit actif du catalogue.");
   const ref = await nextRef("BS", (await ds().repos.needs.list()).map((n) => n.ref));
   const need = { id: uid("bs"), ref, ...input, status: "ouvert" as const, createdBy: me.id, createdAt: now() };
   await ds().repos.needs.create(need);

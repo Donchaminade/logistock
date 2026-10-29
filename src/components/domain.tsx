@@ -448,7 +448,7 @@ export function ProductSelect({ value, onChange, all, disabled, name = "product"
   return (
     <Select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} name={name} className={className} data-testid={`select-${name}`}>
       {all !== undefined && <option value="">{all}</option>}
-      {!all && !list.length && <option value="">Aucun produit : le patron doit en créer un</option>}
+      {!all && !list.length && <option value="" disabled>Aucun produit : le patron doit en créer un</option>}
       {list.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit && p.unit !== "kg" ? ` (${p.unit})` : ""}{p.archived ? " · archivé" : ""}</option>)}
     </Select>
   );

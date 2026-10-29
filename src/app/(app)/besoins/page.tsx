@@ -128,7 +128,8 @@ function NeedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qtyKg = Math.round(Number(f.tons.replace(",", ".")) * 1000);
   return (
     <Modal open={open} onClose={onClose} title="Exprimer un besoin" sub="Visible immédiatement par les fournisseurs, qui pourront se proposer."
-      footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button loading={busy} onClick={async () => {
+      footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button loading={busy} disabled={!f.product.trim()} onClick={async () => {
+        if (!f.product.trim()) return;
         setBusy(true);
         const r = await run(() => createNeed(me, { product: f.product, qtyKg, indicativePrice: Number(f.price), deadline: new Date(f.deadline).toISOString(), zone: f.zone, comment: f.comment }), "Besoin publié", "Les fournisseurs sont notifiés.");
         setBusy(false);

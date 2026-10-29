@@ -17,6 +17,17 @@ export function activeProducts(db: Pick<Database, "products">, keep?: string) {
 }
 
 /**
+ * Produits du stock magasin : les actifs (même à 0 kg), plus tout produit déjà réceptionné.
+ * L'archivage retire un produit des listes de choix, pas du stock physique déjà en magasin.
+ */
+export function stockProductIds(db: Pick<Database, "products">, present: Iterable<string | undefined | null>) {
+  const ids = activeProducts(db).map((p) => p.id);
+  const seen = new Set(ids);
+  for (const id of present) if (id && !seen.has(id)) { seen.add(id); ids.push(id); }
+  return ids;
+}
+
+/**
  * Migration des données antérieures au catalogue : chaque produit déjà utilisé (besoins, contrats,
  * prix de revente) devient une entrée du catalogue avec le même identifiant, donc aucune référence ne casse.
  * Retourne true si la base a été modifiée.

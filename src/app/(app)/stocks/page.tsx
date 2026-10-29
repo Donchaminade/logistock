@@ -9,7 +9,7 @@ import { can } from "@/lib/permissions";
 import { download, stocksTable, toXlsx } from "@/lib/exports";
 import { productLabel } from "@/lib/format";
 import { useApp } from "@/components/DataProvider";
-import { activeProducts } from "@/lib/catalog";
+import { stockProductIds } from "@/lib/catalog";
 import { nameOf } from "@/components/domain";
 import { Badge, DataTable, Empty, PageHeader, Photo } from "@/components/ui";
 import { supplierStock } from "@/lib/calc";
@@ -22,7 +22,7 @@ export default function Stocks() {
   const threshold = db.settings[0]!.stockAlertKg;
   const canPlan = can(db.settings[0]!.perms, me, "transports", "c") && ["patron", "admin", "gestionnaire"].includes(me.role);
   const received = db.deliveries.filter((d) => d.status === "receptionnee" && !d.deleted);
-  const store = activeProducts(db).map((x) => x.id).map((p) => ({ p, kg: received.filter((d) => db.contracts.find((c) => c.id === d.contractId)?.product === p).reduce((s, d) => s + d.netKg, 0) }));
+  const store = stockProductIds(db, received.map((d) => db.contracts.find((c) => c.id === d.contractId)?.product)).map((p) => ({ p, kg: received.filter((d) => db.contracts.find((c) => c.id === d.contractId)?.product === p).reduce((s, d) => s + d.netKg, 0) }));
   const suppliers = db.users.filter((u) => u.role === "fournisseur" && !u.deleted).map((u) => ({ u, s: supplierStock(db, u.id) })).sort((a, b) => b.s.available - a.s.available);
   const decl = db.declarations.filter((d) => !d.deleted).sort((a, b) => b.date.localeCompare(a.date));
   return (

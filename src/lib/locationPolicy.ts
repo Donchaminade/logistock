@@ -16,8 +16,8 @@ export const LOCATION_POLICY: PolicySection[] = [
     title: "Version et responsable",
     paragraphs: [
       `Version ${LOCATION_POLICY_VERSION}. Elle remplace la version 2026-10-20.2. Les textes antérieurs, qui évoquaient à tort des envois, des retraits ou des règlements réalisés dans l'application, ne sont plus en vigueur.`,
-      "LogiStock sert à noter ce qui a déjà été remis ou transmis en dehors de l'application : argent remis en main propre, colis, produits. L'application n'envoie pas d'argent et n'exécute aucun règlement.",
-      "Le responsable du traitement, dans cette maquette, est le patron financeur. En production, ce sera la personne morale qui exploite LogiStock au Togo.",
+      "MarockStock sert à noter ce qui a déjà été remis ou transmis en dehors de l'application : argent remis en main propre, colis, produits. L'application n'envoie pas d'argent et n'exécute aucun règlement.",
+      "Le responsable du traitement, dans cette maquette, est le patron financeur. En production, ce sera la personne morale qui exploite MarockStock au Togo.",
     ],
   },
   {

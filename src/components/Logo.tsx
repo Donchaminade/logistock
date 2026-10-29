@@ -14,7 +14,7 @@ export function Logo({ inverted, sub }: { inverted?: boolean; sub?: string }) {
     <div className="flex items-center gap-2.5">
       <LogoMark />
       <div className="leading-none">
-        <div className={`text-[16px] font-bold tracking-[-0.02em] ${inverted ? "text-white" : "text-ink"}`}>LogiStock</div>
+        <div className={`text-[16px] font-bold tracking-[-0.02em] ${inverted ? "text-white" : "text-ink"}`}>MarockStock</div>
         {sub && <div className={`mt-1 text-[11px] font-medium ${inverted ? "text-white/50" : "text-subtle"}`}>{sub}</div>}
       </div>
     </div>

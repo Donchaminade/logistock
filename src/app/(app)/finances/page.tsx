@@ -38,7 +38,7 @@ export default function Finances() {
   return (
     <>
       <PageHeader eyebrow="Finances" title="Paiements, soldes et dettes" sub="Soldes recalculés à partir des écritures (S = A − V − R − J + Tf), remboursements avec preuves, dettes par ancienneté."
-        actions={can(perms, me, "exports", "r") && <Button variant="secondary" icon={<Download className="size-4" />} data-testid="btn-export-debts" onClick={async () => { try { download(await toXlsx([debtsTable(db)]), "LogiStock-dettes.xlsx"); } catch (e) { await fail(e); } }}>Dettes (.xlsx)</Button>} />
+        actions={can(perms, me, "exports", "r") && <Button variant="secondary" icon={<Download className="size-4" />} data-testid="btn-export-debts" onClick={async () => { try { download(await toXlsx([debtsTable(db)]), "MarockStock-dettes.xlsx"); } catch (e) { await fail(e); } }}>Dettes (.xlsx)</Button>} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat accent label="Soldes à couvrir" value={fcfa(suppliers.reduce((s, x) => s + Math.max(0, x.S), 0))} />
         <Stat label="Dettes restantes" value={fcfa(open.reduce((s, d) => s + debtRemaining(db, d.id), 0))} hint={`${open.length} ouverte(s)`} />

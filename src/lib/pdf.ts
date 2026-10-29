@@ -70,7 +70,7 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  t("LogiStock", 35, 19);
+  t("MarockStock", 35, 19);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(170, 175, 185);
@@ -89,7 +89,7 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   doc.setTextColor(...blue);
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  t("DOCUMENT FICTIF - DÉMONSTRATION LOGISTOCK - SANS VALEUR JURIDIQUE", W / 2, 39.2, { align: "center" });
+  t("DOCUMENT FICTIF - DÉMONSTRATION MAROCKSTOCK - SANS VALEUR JURIDIQUE", W / 2, 39.2, { align: "center" });
 
   // Montant
   let y = 56;
@@ -212,7 +212,7 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   doc.setFontSize(7.5);
   doc.setTextColor(...muted);
   t(`Généré le ${dateTime(new Date().toISOString())} (heure de Lomé)`, 16, 288);
-  t("LogiStock · maquette interactive · données fictives", W - 16, 288, { align: "right" });
+  t("MarockStock · maquette interactive · données fictives", W - 16, 288, { align: "right" });
 
   return doc.output("blob");
 }
@@ -224,5 +224,5 @@ export function verifyUrl(adv: Advance) {
 }
 
 export function receiptFileName(adv: Advance) {
-  return `LogiStock-${adv.receiptNo}.pdf`;
+  return `MarockStock-${adv.receiptNo}.pdf`;
 }

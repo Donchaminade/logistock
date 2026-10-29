@@ -118,7 +118,7 @@ export function margin(db: Database, filter?: (c: Contract) => boolean) {
   let revenue = 0, cost = 0, transport = 0, commissions = 0;
   for (const c of contracts) {
     const m = metrics(db, c);
-    revenue += m.deliveredKg * resale[c.product];
+    revenue += m.deliveredKg * (resale[c.product] ?? 0);
     cost += m.V;
     transport += db.expenses.filter((e) => e.contractId === c.id && !e.deleted && e.category === "transport" && e.debitedOn === "charges_patron").reduce((s, e) => s + e.amount, 0);
     commissions += db.expenses.filter((e) => e.contractId === c.id && !e.deleted && e.category === "commission").reduce((s, e) => s + e.amount, 0);

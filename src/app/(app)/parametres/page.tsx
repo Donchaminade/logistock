@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { BadgePercent, Car, MapPin, Plus, Save, SlidersHorizontal, UserRound } from "lucide-react";
 import { useApp } from "@/components/DataProvider";
+import { activeProducts } from "@/lib/catalog";
 import { Badge, Button, Card, CardTitle, DataTable, Field, Input, Modal, PageHeader, Select, Tabs, Toggle } from "@/components/ui";
 import { can } from "@/lib/permissions";
 import { prixKg, ruleText, tonnes } from "@/lib/format";
@@ -33,10 +34,10 @@ export default function Parametres() {
 function Seuils({ edit }: { edit: boolean }) {
   const { db, me, run } = useApp();
   const s = db.settings[0]!;
-  const [f, setF] = useState({
+  const [f, setF] = useState<Record<string, string>>({
     weightGapThresholdPct: String(s.weightGapThresholdPct), maxFailedLogins: String(s.maxFailedLogins), lockMinutes: String(s.lockMinutes),
     stockAlertKg: String(s.stockAlertKg / 1000), dueSoonDays: String(s.dueSoonDays), inactivityDays: String(s.inactivityDays), syncAlertHours: String(s.syncAlertHours),
-    debtBlockThreshold: String(s.debtBlockThreshold), soja: String(s.resalePrice.soja), cacao: String(s.resalePrice.cacao),
+    debtBlockThreshold: String(s.debtBlockThreshold), ...Object.fromEntries(activeProducts(db).map((x) => [`rp:${x.id}`, String(s.resalePrice[x.id] ?? 0)])),
   });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const n = (v: string) => Number(v.replace(",", "."));
@@ -65,14 +66,13 @@ function Seuils({ edit }: { edit: boolean }) {
         <Card>
           <CardTitle title="Prix de revente estimés (marge, §1.7)" />
           <div className="grid gap-4 sm:grid-cols-2">
-            {field("soja", "Soja (FCFA/kg)")}
-            {field("cacao", "Cacao (FCFA/kg)")}
+            {activeProducts(db).map((x) => <Field key={x.id} label={`${x.name} (FCFA/kg)`}><Input inputMode="decimal" value={f[`rp:${x.id}`] ?? ""} onChange={set(`rp:${x.id}`)} disabled={!edit} name={`rp-${x.id}`} /></Field>)}
           </div>
         </Card>
         {edit && <Button className="w-full" icon={<Save className="size-4" />} data-testid="settings-save" onClick={() => run(() => updateSettings(me, {
           weightGapThresholdPct: n(f.weightGapThresholdPct), maxFailedLogins: Math.round(n(f.maxFailedLogins)), lockMinutes: Math.round(n(f.lockMinutes)), stockAlertKg: Math.round(n(f.stockAlertKg) * 1000),
           dueSoonDays: Math.round(n(f.dueSoonDays)), inactivityDays: Math.round(n(f.inactivityDays)), syncAlertHours: Math.round(n(f.syncAlertHours)), debtBlockThreshold: Math.round(n(f.debtBlockThreshold)),
-          resalePrice: { soja: Math.round(n(f.soja)), cacao: Math.round(n(f.cacao)) },
+          resalePrice: { ...db.settings[0]!.resalePrice, ...Object.fromEntries(activeProducts(db).map((x) => [x.id, Math.round(n(f[`rp:${x.id}`] ?? "0"))])) },
         }), "Paramètres enregistrés", "Modification tracée dans le journal d'audit.")}>Enregistrer les paramètres</Button>}
       </div>
     </div>
@@ -215,7 +215,7 @@ function Lieux({ edit }: { edit: boolean }) {
           </div>
         </Card>
       )}
-      <p className="text-[12.5px] text-muted lg:col-span-2">Prix de revente : soja {prixKg(db.settings[0]!.resalePrice.soja)}, cacao {prixKg(db.settings[0]!.resalePrice.cacao)}.</p>
+      <p className="text-[12.5px] text-muted lg:col-span-2">Prix de revente : {activeProducts(db).map((x) => `${x.name.toLowerCase()} ${prixKg(db.settings[0]!.resalePrice[x.id] ?? 0)}`).join(", ")}.</p>
     </div>
   );
 }

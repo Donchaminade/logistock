@@ -73,7 +73,7 @@ export async function toXlsx(tables: Table[]): Promise<Blob> {
     columns: t.columns.map((c, i) => ({ width: t.numeric.includes(i) ? 16 : Math.max(14, c.length + 4) })),
     stickyRowsCount: 3,
     data: [
-      [{ value: `${t.title} — Données fictives — démo LogiStock`, fontWeight: "bold" as const }],
+      [{ value: `${t.title} — Données fictives — démo MarockStock`, fontWeight: "bold" as const }],
       [{ value: `Exporté le ${dateTime(new Date().toISOString())}` }],
       t.columns.map((c) => ({ value: c, ...head })),
       ...t.rows.map((r) => r.map((v, i) => (typeof v === "number" ? { value: v, type: Number, format: t.numeric.includes(i) ? "#,##0" : undefined } : { value: String(v) }))),
@@ -98,7 +98,7 @@ function header(doc: jsPDF, title: string, sub: string) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("LogiStock", 28, 14.5);
+  doc.text("MarockStock", 28, 14.5);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(170, 175, 185);
@@ -120,7 +120,7 @@ function footer(doc: jsPDF) {
     doc.setPage(i);
     doc.setFontSize(7.5);
     doc.setTextColor(...muted);
-    doc.text(clean(`Généré le ${dateTime(new Date().toISOString())} (heure de Lomé) · LogiStock · données fictives`), 12, H - 7);
+    doc.text(clean(`Généré le ${dateTime(new Date().toISOString())} (heure de Lomé) · MarockStock · données fictives`), 12, H - 7);
     doc.text(`${i} / ${n}`, W - 12, H - 7, { align: "right" });
   }
 }
@@ -237,7 +237,7 @@ export function monthlyReportPdf(db: Database, month: string, product?: Product)
   const f = monthlyFigures(db, month, product);
   const label = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  header(doc, `Rapport mensuel · ${label}`, product ? productLabel[product] : "Soja et cacao");
+  header(doc, `Rapport mensuel · ${label}`, product ? productLabel[product] : "Tous les produits");
   const kpis: [string, string][] = [
     ["Avancé dans le mois", fcfa(f.advanced, " ")], ["Livré réceptionné", `${tonnes(f.deliveredKg, " ")} · ${fcfa(f.deliveredValue, " ")}`],
     ["Remboursements reçus", fcfa(f.repaid, " ")], ["Charges du patron", fcfa(f.expenses, " ")],

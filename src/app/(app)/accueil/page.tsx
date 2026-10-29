@@ -11,6 +11,7 @@ import { computeAlerts } from "@/lib/alerts";
 import { AGE_LABEL, debtAge, margin } from "@/lib/calc";
 import { hasPin, MOBILE_ROLES } from "@/services/actions";
 import { useApp } from "@/components/DataProvider";
+import { activeProducts } from "@/lib/catalog";
 import { ContractBadges, contractsOf, nameOf, PartialModal, TransportModal } from "@/components/domain";
 import { Badge, Button, Card, CardTitle, DataTable, Empty, LinkButton, PageHeader, Progress, Segmented, Select, Stat } from "@/components/ui";
 import { debtRemaining, metrics, supplierStock } from "@/lib/calc";
@@ -109,7 +110,7 @@ function ContractsTable({ db, rows }: { db: Database; rows: Contract[] }) {
 
 function PatronHome() {
   const { db, me } = useApp();
-  const [product, setProduct] = useState<"all" | "soja" | "cacao">("all");
+  const [product, setProduct] = useState<string>("all");
   const [supplier, setSupplier] = useState("all");
   const [period, setPeriod] = useState<"all" | "30" | "90">("all");
   const contracts = db.contracts.filter((c) => !c.deleted && (product === "all" || c.product === product) && (supplier === "all" || c.supplierId === supplier));
@@ -142,7 +143,7 @@ function PatronHome() {
       />
       <div className="animate-in mb-5 flex flex-wrap items-center gap-2">
         <Segmented value={period} onChange={setPeriod} options={[{ value: "30", label: "30 jours" }, { value: "90", label: "90 jours" }, { value: "all", label: "Depuis le début" }]} />
-        <Segmented value={product} onChange={setProduct} options={[{ value: "all", label: "Tous produits" }, { value: "soja", label: "Soja" }, { value: "cacao", label: "Cacao" }]} />
+        <Select value={product} onChange={(e) => setProduct(e.target.value)} className="!h-10 w-auto min-w-[10rem] !py-0 text-[13.5px]" aria-label="Filtrer par produit"><option value="all">Tous produits</option>{activeProducts(db).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
         <Select value={supplier} onChange={(e) => setSupplier(e.target.value)} className="!h-10 w-auto min-w-[12rem] !py-0 text-[13.5px]" aria-label="Filtrer par fournisseur">
           <option value="all">Tous les fournisseurs</option>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

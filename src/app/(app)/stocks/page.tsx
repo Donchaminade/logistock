@@ -9,6 +9,7 @@ import { can } from "@/lib/permissions";
 import { download, stocksTable, toXlsx } from "@/lib/exports";
 import { productLabel } from "@/lib/format";
 import { useApp } from "@/components/DataProvider";
+import { activeProducts } from "@/lib/catalog";
 import { nameOf } from "@/components/domain";
 import { Badge, DataTable, Empty, PageHeader, Photo } from "@/components/ui";
 import { supplierStock } from "@/lib/calc";
@@ -21,13 +22,13 @@ export default function Stocks() {
   const threshold = db.settings[0]!.stockAlertKg;
   const canPlan = can(db.settings[0]!.perms, me, "transports", "c") && ["patron", "admin", "gestionnaire"].includes(me.role);
   const received = db.deliveries.filter((d) => d.status === "receptionnee" && !d.deleted);
-  const store = (["soja", "cacao"] as const).map((p) => ({ p, kg: received.filter((d) => db.contracts.find((c) => c.id === d.contractId)?.product === p).reduce((s, d) => s + d.netKg, 0) }));
+  const store = activeProducts(db).map((x) => x.id).map((p) => ({ p, kg: received.filter((d) => db.contracts.find((c) => c.id === d.contractId)?.product === p).reduce((s, d) => s + d.netKg, 0) }));
   const suppliers = db.users.filter((u) => u.role === "fournisseur" && !u.deleted).map((u) => ({ u, s: supplierStock(db, u.id) })).sort((a, b) => b.s.available - a.s.available);
   const decl = db.declarations.filter((d) => !d.deleted).sort((a, b) => b.date.localeCompare(a.date));
   return (
     <>
       <PageHeader title="Stocks" sub="Stock déclaré chez les acheteurs (pas encore enlevé) et stock reçu au magasin de Lomé. Une déclaration ne réduit pas le solde ; seule une livraison réceptionnée le fait."
-        actions={<Button variant="secondary" icon={<Download className="size-4" />} onClick={async () => { try { download(await toXlsx([stocksTable(db)]), "LogiStock-stocks.xlsx"); } catch (e) { await fail(e); } }}>Excel</Button>} />
+        actions={<Button variant="secondary" icon={<Download className="size-4" />} onClick={async () => { try { download(await toXlsx([stocksTable(db)]), "MarockStock-stocks.xlsx"); } catch (e) { await fail(e); } }}>Excel</Button>} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat accent label="Disponible chez les acheteurs" value={tonnes(suppliers.reduce((s, r) => s + r.s.available, 0))} hint={`Seuil d'alerte ${tonnes(threshold)}`} />
         <Stat label="Prêts à enlever" value={String(suppliers.filter((r) => r.s.available >= threshold).length)} hint="Au-dessus du seuil" />

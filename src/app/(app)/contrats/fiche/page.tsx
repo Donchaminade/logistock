@@ -112,7 +112,7 @@ function Fiche({ id }: { id: string }) {
               const reason = await askReason({ title: "Motif de l'ajustement", confirmText: "Enregistrer l'ajustement", dark: true });
               if (reason) await run(() => addAdjustment(me, c.id, { amount: Number(v), reason }), "Ajustement enregistré", "Solde recalculé.");
             }} data-testid="btn-adjust">Ajustement J</Button>}
-            <Button variant="ghost" icon={<Download className="size-4" />} onClick={() => { download(contractPdf(db, c), `LogiStock-${c.ref}.pdf`); toast("PDF du contrat généré", c.ref); }} data-testid="btn-contract-pdf">PDF</Button>
+            <Button variant="ghost" icon={<Download className="size-4" />} onClick={() => { download(contractPdf(db, c), `MarockStock-${c.ref}.pdf`); toast("PDF du contrat généré", c.ref); }} data-testid="btn-contract-pdf">PDF</Button>
             {staff && dm !== "interdite" && !pendingDel && <Button variant="ghost" icon={<Trash2 className="size-4" />} onClick={onDelete} data-testid="btn-delete">{dm === "confirmation" ? "Demander la suppression" : "Supprimer"}</Button>}
           </div>
         </div>

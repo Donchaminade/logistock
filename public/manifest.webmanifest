@@ -1,6 +1,6 @@
 {
-  "name": "LogiStock — Préfinancement soja et cacao",
-  "short_name": "LogiStock",
+  "name": "MarockStock — Préfinancement soja et cacao",
+  "short_name": "MarockStock",
   "description": "Avances, contrats, enlèvements, pesées et soldes des acheteurs de soja et de cacao (maquette, données fictives).",
   "lang": "fr",
   "start_url": "/",

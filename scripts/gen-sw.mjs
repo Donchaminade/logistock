@@ -28,7 +28,7 @@ for (const p of files.sort()) {
 }
 const version = hash.digest("hex").slice(0, 12);
 
-const sw = `// Service worker LogiStock (généré par scripts/gen-sw.mjs) — version ${version}
+const sw = `// Service worker MarockStock (généré par scripts/gen-sw.mjs) — version ${version}
 const CACHE = "logistock-${version}";
 const PRECACHE = ${JSON.stringify(urls)};
 self.addEventListener("install", (e) => {

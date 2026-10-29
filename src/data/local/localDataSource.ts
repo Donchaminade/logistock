@@ -2,6 +2,7 @@
 // Synchronisation en direct entre onglets : événement « storage » + BroadcastChannel.
 import { buildSealedSeed, DEMO_ACCOUNTS, OTHER_ACCOUNTS } from "@/lib/seed";
 import { uuid } from "@/lib/crypto";
+import { migrateCatalog } from "@/lib/catalog";
 import type { Collection, Database, Entity, EntityOf, Id } from "@/lib/types";
 import type { ChangeOrigin, DataSource, DeviceStore, Repositories, Repository, SessionStore } from "../contracts";
 import { IndexedDbPhotoStore } from "./photoStore";
@@ -44,7 +45,7 @@ const SESSION_KEY = "logistock:session";
 const CHANNEL = "logistock-sync";
 
 export const COLLECTIONS: Collection[] = [
-  "users", "devices", "needs", "offers", "contracts", "revisions", "advances", "locations", "vehicles", "drivers", "pickups",
+  "products", "users", "devices", "needs", "offers", "contracts", "revisions", "advances", "locations", "vehicles", "drivers", "pickups",
   "transports", "traces", "checkins", "deliveries", "partials", "declarations", "payments", "expenses", "adjustments",
   "commissions", "debts", "notifications", "pending", "audit", "outbox", "settings",
   "consents", "loginLogs", "tracks", "positions", "shares",
@@ -120,7 +121,9 @@ export class LocalDataSource implements DataSource {
       for (const k of COLLECTIONS) if (!Array.isArray(db[k])) (db[k] as unknown[]) = [];
       if (!db.settings?.length) return null;
       const migrated = backfillLocation(backfillDemoEmails(db));
-      if (migrated !== db) window.localStorage.setItem(KEY, JSON.stringify(migrated));
+      // Migration : produits saisis avant le catalogue → entrées du catalogue, sans perte.
+      const cat = migrateCatalog(migrated);
+      if (migrated !== db || cat) window.localStorage.setItem(KEY, JSON.stringify(migrated));
       return migrated;
     } catch {
       return null; // données corrompues : on repart du jeu de démo

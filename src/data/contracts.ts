@@ -2,7 +2,7 @@
 // L'interface ne parle qu'à ces interfaces : aujourd'hui l'implémentation est locale (localStorage),
 // demain une implémentation HTTP vers l'API Spring Boot prendra le relais sans toucher aux écrans.
 import type {
-  Adjustment, Advance, AppNotification, AuditEntry, Checkin, Collection, Commission, Contract, Database, Declaration, Debt,
+  Adjustment, Advance, AppNotification, AuditEntry, CatalogProduct, Checkin, Collection, Commission, Contract, Database, Declaration, Debt,
   Delivery, Device, Driver, Entity, EntityOf, Expense, GeoPing, Id, Location, LocationConsent, LocationTrack, LoginLog, Need, Offer, OutboxItem, PartialDelivery, Payment,
   PendingAction, Pickup, PriceRevision, Settings, TraceEvent, TrackShare, Transport, User, Vehicle,
 } from "@/lib/types";
@@ -14,6 +14,7 @@ export interface Repository<T extends Entity> {
   update(id: Id, patch: Partial<T>): Promise<T>;
 }
 
+export type ProductRepository = Repository<CatalogProduct>;
 export type UserRepository = Repository<User>;
 export type NeedRepository = Repository<Need>;
 export type OfferRepository = Repository<Offer>;
@@ -48,6 +49,7 @@ export type PositionRepository = Repository<GeoPing>;
 export type ShareRepository = Repository<TrackShare>;
 
 export interface Repositories {
+  products: ProductRepository;
   users: UserRepository;
   needs: NeedRepository;
   offers: OfferRepository;

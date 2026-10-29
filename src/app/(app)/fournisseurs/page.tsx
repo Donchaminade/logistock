@@ -3,6 +3,8 @@ import { useState } from "react";
 import { UserPlus, Users } from "lucide-react";
 import { confirm, success } from "@/components/alerts";
 import { useApp } from "@/components/DataProvider";
+import { activeProducts } from "@/lib/catalog";
+import { ProductSelect } from "@/components/domain";
 import { Avatar, Badge, Button, DataTable, Empty, Field, Input, Modal, PageHeader, Select, Toggle } from "@/components/ui";
 import { date, roleLabel } from "@/lib/format";
 import { displayPhone } from "@/lib/identity";
@@ -39,8 +41,8 @@ export default function Fournisseurs() {
 }
 
 function CreateModal({ onClose }: { onClose: () => void }) {
-  const { me, run } = useApp();
-  const [f, setF] = useState({ name: "", phone: "", email: "", zone: "", product: "soja" as Product });
+  const { db, me, run } = useApp();
+  const [f, setF] = useState({ name: "", phone: "", email: "", zone: "", product: (activeProducts(db)[0]?.id ?? "") as Product });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <Modal open onClose={onClose} title="Créer un compte fournisseur" sub="Le fournisseur recevra ses identifiants (SMS ou remise en main propre)."
@@ -56,7 +58,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
         <Field label="Téléphone" hint="Avec ou sans indicatif. Pas forcément un numéro togolais."><Input inputMode="tel" value={f.phone} onChange={set("phone")} placeholder="+229 97 00 00 00" name="supplierPhone" /></Field>
         <Field label="E-mail" hint="Facultatif. Sert aussi à se connecter."><Input type="email" autoComplete="off" value={f.email} onChange={set("email")} placeholder="abla.mensah@example.com" name="supplierEmail" /></Field>
         <Field label="Zone"><Input value={f.zone} onChange={set("zone")} placeholder="ex. Kpalimé" name="supplierZone" /></Field>
-        <Field label="Produit principal"><Select value={f.product} onChange={set("product")}><option value="soja">Soja</option><option value="cacao">Cacao</option></Select></Field>
+        <Field label="Produit principal"><ProductSelect value={f.product} onChange={(v) => setF({ ...f, product: v })} /></Field>
       </div>
     </Modal>
   );

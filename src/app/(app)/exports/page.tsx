@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Download, FileSpreadsheet, FileText, LineChart } from "lucide-react";
 import { fail, toast } from "@/components/alerts";
 import { useApp } from "@/components/DataProvider";
+import { ProductSelect } from "@/components/domain";
 import { Button, Card, CardTitle, Field, PageHeader, Select, Stat } from "@/components/ui";
 import { contractsTable, debtsTable, download, monthlyFigures, monthlyReportPdf, stocksTable, tablesPdf, toXlsx, type Table } from "@/lib/exports";
 import { fcfa, tonnes } from "@/lib/format";
@@ -28,8 +29,8 @@ export default function Exports() {
   ];
   async function go(kind: "xlsx" | "pdf", t: Table[], name: string) {
     try {
-      const blob = kind === "xlsx" ? await toXlsx(t) : tablesPdf(t.length === 1 ? t[0]!.title : "Export LogiStock", t);
-      download(blob, `LogiStock-${name}-${stamp}.${kind}`);
+      const blob = kind === "xlsx" ? await toXlsx(t) : tablesPdf(t.length === 1 ? t[0]!.title : "Export MarockStock", t);
+      download(blob, `MarockStock-${name}-${stamp}.${kind}`);
       toast("Export généré", `${name}.${kind} · fichier local, aucune donnée envoyée.`);
     } catch (e) {
       await fail(e);
@@ -58,10 +59,10 @@ export default function Exports() {
 
       <Card className="mt-6">
         <CardTitle title="Rapport mensuel du patron" sub="Avances, livraisons, remboursements, charges, soldes, dettes et marge estimée" icon={<LineChart className="size-[18px]" />}
-          action={<Button icon={<FileText className="size-4" />} data-testid="btn-monthly" onClick={async () => { try { download(monthlyReportPdf(db, month, product || undefined), `LogiStock-rapport-${month}${product ? `-${product}` : ""}.pdf`); toast("Rapport mensuel généré", label); } catch (e) { await fail(e); } }}>Rapport PDF</Button>} />
+          action={<Button icon={<FileText className="size-4" />} data-testid="btn-monthly" onClick={async () => { try { download(monthlyReportPdf(db, month, product || undefined), `MarockStock-rapport-${month}${product ? `-${product}` : ""}.pdf`); toast("Rapport mensuel généré", label); } catch (e) { await fail(e); } }}>Rapport PDF</Button>} />
         <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:max-w-lg">
           <Field label="Mois"><Select value={month} onChange={(e) => setMonth(e.target.value)} name="month">{months.map((m) => <option key={m} value={m}>{new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-01T00:00:00Z`))}</option>)}</Select></Field>
-          <Field label="Produit"><Select value={product} onChange={(e) => setProduct(e.target.value as "" | Product)}><option value="">Soja et cacao</option><option value="soja">Soja</option><option value="cacao">Cacao</option></Select></Field>
+          <Field label="Produit"><ProductSelect value={product} onChange={setProduct} all="Tous les produits" /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat accent label="Avancé dans le mois" value={fcfa(f.advanced)} hint={`${f.advances.length} remise(s)`} />

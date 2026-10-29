@@ -46,7 +46,13 @@ export function relative(iso: string): string {
   return d === 1 ? "hier" : d < 30 ? `il y a ${d} jours` : date(iso);
 }
 
-export const productLabel = { soja: "Soja", cacao: "Cacao" } as const;
+// Libellés des produits : alimentés par le catalogue du patron (DataProvider), repli lisible sinon.
+const catalogNames = new Map<string, string>([["soja", "Soja"], ["cacao", "Cacao"]]);
+export function setProductCatalog(list: { id: string; name: string }[]) {
+  for (const p of list) catalogNames.set(p.id, p.name);
+}
+export const productName = (id: string | undefined | null) => (id ? catalogNames.get(id) ?? id.charAt(0).toUpperCase() + id.slice(1) : "—");
+export const productLabel: Record<string, string> = new Proxy({} as Record<string, string>, { get: (_t, k) => (typeof k === "string" ? productName(k) : undefined) });
 export const modeLabel = { especes: "Espèces", virement: "Virement", flooz: "Flooz", tmoney: "T-Money", autre: "Autre" } as const;
 export const roleLabel = {
   patron: "Patron", admin: "Administrateur", gestionnaire: "Gestionnaire délégué", fournisseur: "Fournisseur",

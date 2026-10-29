@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Barre latérale (ordinateur) */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] flex-col bg-ink text-white lg:flex">
         <div className="px-6 pb-6 pt-7">
-          <Logo inverted sub="Préfinancement soja et cacao" />
+          <Logo inverted sub="Préfinancement de produits agricoles" />
         </div>
         <nav className="flex-1 space-y-7 overflow-y-auto px-3">
           {SIDEBAR[me.role].map((g) => (

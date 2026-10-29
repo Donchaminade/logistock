@@ -18,7 +18,7 @@ Ce parcours couvre tout le cycle d'un achat financé, des étapes 0 à 7, avec l
 ## 1. Le tableau de bord du patron — 1 min · Onglet 1
 
 - **Accueil** : total avancé, total livré, soldes ouverts, stock disponible, charges, dettes, transports en cours et actions à confirmer.
-- Filtrez par **Soja / Cacao** ou par fournisseur.
+- Filtrez par **produit** (liste issue du catalogue du patron : soja, cacao, etc.) ou par fournisseur.
 - Montrez le bloc **À traiter**. Il contient une demande de suppression envoyée par la gestionnaire et un contrat échu non soldé.
 - Le tableau des contrats affiche pour chacun la réalisation, le prix en vigueur et le **reste à livrer**.
 

@@ -1,6 +1,6 @@
 # MarockStock — maquette interactive
 
-Maquette **front uniquement** de MarockStock, l'application de gestion des préfinancements et des achats de **soja** et de **cacao** au Togo : besoins, propositions, contrats, remises d'argent avec reçu, transports suivis lot par lot, livraisons partielles, reliquats recalculés, paiements et dettes.
+Maquette **front uniquement** de MarockStock, l'application de gestion des préfinancements et des achats de **produits agricoles** au Togo (soja, cacao et tout produit ajouté par le patron dans son catalogue) : besoins, propositions, contrats, remises d'argent avec reçu, transports suivis lot par lot, livraisons partielles, reliquats recalculés, paiements et dettes.
 
 > **Données fictives — démo.** Les noms, numéros, montants et photos sont inventés. Aucune donnée réelle n'est collectée et rien n'est envoyé sur Internet : tout reste dans le navigateur.
 

@@ -74,7 +74,7 @@ export async function receiptPdf(db: Database, adv: Advance, photoUrl?: string):
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(170, 175, 185);
-  t("Préfinancement soja et cacao - Togo", 35, 24.5);
+  t("Préfinancement de produits agricoles - Togo", 35, 24.5);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);

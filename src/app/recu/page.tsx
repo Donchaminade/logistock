@@ -32,7 +32,7 @@ function Recu() {
       </div>
       <article className="mx-auto max-w-[52rem] overflow-hidden rounded-2xl border border-line bg-white print:rounded-none print:border-0" data-testid="receipt">
         <header className="flex items-center justify-between bg-ink px-8 py-6 text-white">
-          <Logo inverted sub="Préfinancement soja et cacao · Togo" />
+          <Logo inverted sub="Préfinancement de produits agricoles · Togo" />
           <div className="text-right">
             <div className="text-[13px] font-bold tracking-wide">{a.kind === "complement" ? "REÇU DE COMPLÉMENT DE PRIX" : "REÇU DE REMISE D'ESPÈCES"}</div>
             <div className="num text-[12.5px] text-white/60">N° {a.receiptNo} · {date(a.date)}</div>

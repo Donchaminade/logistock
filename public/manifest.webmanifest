@@ -1,7 +1,7 @@
 {
-  "name": "MarockStock — Préfinancement soja et cacao",
+  "name": "MarockStock — Préfinancement de produits agricoles",
   "short_name": "MarockStock",
-  "description": "Avances, contrats, enlèvements, pesées et soldes des acheteurs de soja et de cacao (maquette, données fictives).",
+  "description": "Avances, contrats, enlèvements, pesées et soldes des acheteurs de produits agricoles (soja, cacao et autres) (maquette, données fictives).",
   "lang": "fr",
   "start_url": "/",
   "scope": "/",

@@ -85,7 +85,7 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-white lg:flex">
-        <Logo inverted sub="Préfinancement soja et cacao · Togo" />
+        <Logo inverted sub="Préfinancement de produits agricoles · Togo" />
         <div className="max-w-md">
           <p className="eyebrow !text-white/40">Maquette interactive</p>
           <h1 className="mt-3 text-[40px] font-bold leading-[1.08] tracking-[-0.035em]">
@@ -112,7 +112,7 @@ export default function LoginPage() {
 
       <main className="flex flex-col justify-center px-5 py-10 sm:px-10">
         <div className="animate-in mx-auto w-full max-w-[26rem]">
-          <div className="mb-10 lg:hidden"><Logo sub="Préfinancement soja et cacao" /></div>
+          <div className="mb-10 lg:hidden"><Logo sub="Préfinancement de produits agricoles" /></div>
           <h2 className="text-[26px] font-bold tracking-[-0.025em]">Connexion</h2>
           <p className="mt-1.5 text-[14.5px] text-muted">Accédez à votre espace avec votre e-mail ou votre numéro de téléphone.</p>
           {!online && (

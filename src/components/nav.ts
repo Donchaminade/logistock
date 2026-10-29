@@ -1,6 +1,6 @@
 import {
   Bell, BadgePercent, ClipboardCheck, Download, FileCheck2, FileText, Handshake, History, LayoutDashboard, LocateFixed, Map, MoreHorizontal, PackageCheck,
-  PackagePlus, Receipt, Route, ScrollText, Settings, Shield, ShieldCheck, Truck, User as UserIcon, UserCog, Users, Wallet, Warehouse, Wrench,
+  Package, PackagePlus, Receipt, Route, ScrollText, Settings, Shield, ShieldCheck, Truck, User as UserIcon, UserCog, Users, Wallet, Warehouse, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/lib/types";
@@ -19,6 +19,7 @@ const I = {
   enlevements: { href: "/enlevements/", label: "Ordres d'enlèvement", icon: Route },
   transports: { href: "/transports/", label: "Transports et lots", icon: Truck },
   carte: { href: "/carte/", label: "Carte des lots", icon: Map },
+  produits: { href: "/produits/", label: "Catalogue produits", icon: Package },
   stocks: { href: "/stocks/", label: "Stocks", icon: Warehouse },
   reception: { href: "/reception/", label: "Réception et pesées", icon: PackageCheck },
   finances: { href: "/finances/", label: "Paiements et dettes", icon: Wallet },
@@ -48,13 +49,13 @@ const as = (i: NavItem, label: string): NavItem => ({ ...i, label });
 
 export const SIDEBAR: Record<Role, { group: string; items: NavItem[] }[]> = {
   patron: [
-    { group: "Pilotage", items: [I.accueil, I.besoins, I.contrats, I.enlevements, I.transports, I.carte, I.stocks, I.reception] },
+    { group: "Pilotage", items: [I.accueil, I.produits, I.besoins, I.contrats, I.enlevements, I.transports, I.carte, I.stocks, I.reception] },
     { group: "Finances", items: [I.finances, I.commissions, I.charges, I.exports] },
     { group: "Contrôle", items: [I.actions, as(I.fournisseurs, "Comptes"), I.utilisateurs, I.personnel, I.consentements, I.droits, I.parametres, I.journal] },
   ],
   admin: [
     { group: "Administration", items: [I.accueil, I.utilisateurs, I.personnel, I.consentements, I.parametres, I.droits, I.journal] },
-    { group: "Opérations", items: [I.fournisseurs, I.besoins, I.contrats, I.enlevements, I.transports, I.carte, I.reception] },
+    { group: "Opérations", items: [I.fournisseurs, I.produits, I.besoins, I.contrats, I.enlevements, I.transports, I.carte, I.reception] },
     { group: "Finances", items: [I.finances, I.commissions, I.charges, I.exports, as(I.actions, "Actions à confirmer")] },
   ],
   gestionnaire: [
@@ -95,6 +96,7 @@ export const ROUTE_ROLES: Record<string, Role[]> = {
   "/trajets": ["chauffeur"],
   "/frais": ["chauffeur"],
   "/reception": ["patron", "admin", "gestionnaire", "magasinier"],
+  "/produits": ["patron", "admin", "gestionnaire", "magasinier", "comptable"],
   "/stocks": ["patron", "admin", "gestionnaire", "magasinier", "comptable"],
   "/carte": ["patron", "admin", "gestionnaire", "magasinier", "comptable"],
   "/declarer": ["fournisseur"],

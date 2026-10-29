@@ -3,7 +3,7 @@
 // livraison partielle 100 t / 80 t (reliquat 20 t) et ajustement 200 → 250 FCFA/kg.
 import { sealDatabase } from "./integrity";
 import { defaultPerms } from "./permissions";
-import type { Database, Settings, TraceEvent } from "./types";
+import type { CatalogProduct, Database, Settings, TraceEvent } from "./types";
 
 const d = (s: string) => new Date(s).toISOString();
 
@@ -208,7 +208,15 @@ export function buildSeed(): Database {
     tracks: [],
     positions: [],
     shares: [],
+    products: defaultProducts(now),
   };
+}
+
+export function defaultProducts(now = new Date().toISOString()): CatalogProduct[] {
+  return [
+    { id: "soja", name: "Soja", unit: "kg", category: "Oléagineux", price: 215, description: "Exemple modifiable par le patron.", createdAt: now, createdBy: "u-patron" },
+    { id: "cacao", name: "Cacao", unit: "kg", category: "Fèves", price: 200, description: "Exemple modifiable par le patron.", createdAt: now, createdBy: "u-patron" },
+  ];
 }
 
 export function defaultSettings(now = new Date().toISOString()): Settings {

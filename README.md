@@ -1,6 +1,6 @@
-# LogiStock — maquette interactive
+# MarockStock — maquette interactive
 
-Maquette **front uniquement** de LogiStock, l'application de gestion des préfinancements et des achats de **soja** et de **cacao** au Togo : besoins, propositions, contrats, remises d'argent avec reçu, transports suivis lot par lot, livraisons partielles, reliquats recalculés, paiements et dettes.
+Maquette **front uniquement** de MarockStock, l'application de gestion des préfinancements et des achats de **soja** et de **cacao** au Togo : besoins, propositions, contrats, remises d'argent avec reçu, transports suivis lot par lot, livraisons partielles, reliquats recalculés, paiements et dettes.
 
 > **Données fictives — démo.** Les noms, numéros, montants et photos sont inventés. Aucune donnée réelle n'est collectée et rien n'est envoyé sur Internet : tout reste dans le navigateur.
 
@@ -134,7 +134,7 @@ Base légale, dans cette maquette : le **consentement**, au sens de la loi togol
 Usages :
 
 - journal de connexion (heure, compte, position et précision, ou motif d'échec) — **Mes connexions** ;
-- position jointe au journal d'audit quand on enregistre une remise ou une transmission, ou qu'on modifie un compte (pas de règlement dans l'application : LogiStock note ce qui a déjà eu lieu) ;
+- position jointe au journal d'audit quand on enregistre une remise ou une transmission, ou qu'on modifie un compte (pas de règlement dans l'application : MarockStock note ce qui a déjà eu lieu) ;
 - suivi de livraison sur la fiche du lot en route, après un clic « Afficher la carte » ;
 - suivi de sécurité. Le patron suit tous les employés côté acheteur. Un gestionnaire ne suit que son équipe. Le comptable ne suit que le périmètre coché par le patron (**Paramètres → Localisation**). Le bouton est dans **Personnel suivi**. Le motif est obligatoire, le suivi s'arrête au bout de 30 jours, et la personne voit le bandeau « Localisation partagée pour vérification de sécurité ». L'activation, chaque consultation et l'arrêt sont audités.
 

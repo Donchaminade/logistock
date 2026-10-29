@@ -8,6 +8,7 @@ import { pullGeoNotice } from "@/services/location";
 import { syncOutbox } from "@/services/core";
 import { isOnline, onNetworkChange } from "@/services/network";
 import { fail, toast } from "./alerts";
+import { setProductCatalog } from "@/lib/format";
 
 interface Ctx {
   db: Database | null;
@@ -52,6 +53,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } else seen.current = null;
+    setProductCatalog(snap.products ?? []);
     setDb(snap);
     setMe(user);
     setReady(true);

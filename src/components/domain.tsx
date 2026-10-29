@@ -12,6 +12,7 @@ import {
 } from "@/services/actions";
 import { confirm, fail, info, success, toast } from "./alerts";
 import { useApp } from "./DataProvider";
+import { activeProducts } from "@/lib/catalog";
 import { Badge, Button, cx, Field, Input, Modal, PhotoInput, Segmented, Select, Textarea, Toggle } from "./ui";
 
 export const nameOf = (db: Database, id?: Id) => db.users.find((u) => u.id === id)?.name ?? "—";
@@ -52,14 +53,14 @@ export function ContractModal({ open, onClose, offerId, preset, onDone }: { open
   const { db, me } = useApp();
   const suppliers = db.users.filter((u) => u.role === "fournisseur" && u.active && !u.deleted);
   const places = db.locations.filter((l) => !l.deleted);
-  const [f, setF] = useState({ supplierId: "", product: "soja" as Product, tons: "", price: "", amount: "", received: today(), delivery: plusDays(30), place: "Kaboli", otherPlace: "", paid: true, rule: "" });
+  const [f, setF] = useState({ supplierId: "", product: (activeProducts(db)[0]?.id ?? "") as Product, tons: "", price: "", amount: "", received: today(), delivery: plusDays(30), place: "Kaboli", otherPlace: "", paid: true, rule: "" });
   const [busy, setBusy] = useState(false);
   const rules = db.settings[0]!.commissionRules.filter((r) => r.active);
   useEffect(() => {
     if (!open) return;
     setF({
       supplierId: preset?.supplierId ?? suppliers[0]?.id ?? "",
-      product: preset?.product ?? "soja",
+      product: preset?.product ?? activeProducts(db)[0]?.id ?? "",
       tons: preset?.qtyKg ? String(preset.qtyKg / 1000) : "",
       price: preset?.initialPrice ? String(preset.initialPrice) : "",
       amount: preset?.amount ? String(preset.amount) : "",
@@ -102,10 +103,7 @@ export function ContractModal({ open, onClose, offerId, preset, onDone }: { open
           </Select>
         </Field>
         <Field label="Produit">
-          <Select value={f.product} onChange={set("product")} disabled={!!offerId}>
-            <option value="soja">Soja</option>
-            <option value="cacao">Cacao</option>
-          </Select>
+          <ProductSelect value={f.product} onChange={(v) => setF({ ...f, product: v })} disabled={!!offerId} />
         </Field>
         <Field label="Tonnes contractées" hint={qtyKg > 0 ? `${group(qtyKg)} kg` : undefined}>
           <Input inputMode="decimal" value={f.tons} onChange={set("tons")} placeholder="ex. 500" name="tons" />
@@ -158,7 +156,7 @@ export async function openReceipt(db: Database, adv: Advance, mode: "download" |
     const name = receiptFileName(adv);
     const file = new File([blob], name, { type: "application/pdf" });
     if (mode === "share" && typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: `Reçu ${adv.receiptNo}`, text: `Reçu LogiStock ${adv.receiptNo}` });
+      await navigator.share({ files: [file], title: `Reçu ${adv.receiptNo}`, text: `Reçu MarockStock ${adv.receiptNo}` });
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -440,5 +438,18 @@ export function TransportModal({ open, onClose, contractId, onDone }: { open: bo
         <Field label="Départ"><Input type="datetime-local" value={f.departure} onChange={set("departure")} /></Field>
       </div>
     </Modal>
+  );
+}
+
+/** Liste déroulante des produits du catalogue du patron (jamais de saisie libre). */
+export function ProductSelect({ value, onChange, all, disabled, name = "product", className }: { value: string; onChange: (v: string) => void; all?: string; disabled?: boolean; name?: string; className?: string }) {
+  const { db } = useApp();
+  const list = activeProducts(db, value);
+  return (
+    <Select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} name={name} className={className} data-testid={`select-${name}`}>
+      {all !== undefined && <option value="">{all}</option>}
+      {!all && !list.length && <option value="">Aucun produit : le patron doit en créer un</option>}
+      {list.map((p) => <option key={p.id} value={p.id}>{p.name}{p.unit && p.unit !== "kg" ? ` (${p.unit})` : ""}{p.archived ? " · archivé" : ""}</option>)}
+    </Select>
   );
 }

@@ -1,4 +1,4 @@
-// Rôles étendus LogiStock : administrateur, magasinier, chauffeur, comptable ; verrouillage, PIN,
+// Rôles étendus MarockStock : administrateur, magasinier, chauffeur, comptable ; verrouillage, PIN,
 // hors ligne (file d'attente + PWA), vérification de signature, commissions, exports (Playwright, Chromium).
 import { chromium } from "playwright";
 import fs from "node:fs";

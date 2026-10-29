@@ -2,7 +2,7 @@
 // Ils n'utilisent que les repositories de la couche de données (jamais le stockage directement).
 import { commissionDue, currentPrice, debtPaid, metrics, simulateRevision, supplierOpenDebt } from "@/lib/calc";
 import { uid } from "@/lib/hash";
-import { fcfa, prixKg, tonnes, date as fdate } from "@/lib/format";
+import { fcfa, prixKg, productName, tonnes, date as fdate } from "@/lib/format";
 import { GENESIS, sealReceipt, sealRevision, signWriteOff, traceHash } from "@/lib/integrity";
 import { canonicalPhone, isEmail, normEmail, phoneDigitCount, samePhone } from "@/lib/identity";
 import { can, deleteMode, isLocked } from "@/lib/permissions";
@@ -16,6 +16,7 @@ import {
 } from "./core";
 import { journalGeo } from "./location";
 import { isOnline } from "./network";
+import { slugify } from "@/lib/catalog";
 
 export { ActionError };
 export { syncOutbox } from "./core";
@@ -29,7 +30,7 @@ const ficheP = (id: Id) => `/enlevements/fiche/?id=${id}`;
 export async function createSupplier(me: User, input: { name: string; phone: string; email?: string; zone: string; product: Product }) {
   assert(me.role === "patron", "Seul le patron peut créer un compte fournisseur (pas d'auto-inscription).");
   requireOnline("La gestion des comptes");
-  return insertUser(me, { role: "fournisseur", name: input.name, phone: input.phone, email: input.email, zone: input.zone, title: `Fournisseur · ${input.product} · ${input.zone}` });
+  return insertUser(me, { role: "fournisseur", name: input.name, phone: input.phone, email: input.email, zone: input.zone, title: `Fournisseur · ${productName(input.product)} · ${input.zone}` });
 }
 
 async function insertUser(me: User, i: { role: Role; name: string; phone: string; email?: string; zone?: string; title: string }) {
@@ -996,4 +997,39 @@ export async function savePhoto(dataUrl: string) {
 }
 export async function resolvePhoto(ref: string) {
   return ds().photos.resolve(ref);
+}
+
+// ——— Catalogue des produits (patron uniquement) ———
+export interface ProductInput { id?: Id; name: string; unit: string; category?: string; price?: number; description?: string }
+export async function saveProduct(me: User, i: ProductInput) {
+  assert(me.role === "patron", "Seul le patron gère le catalogue des produits.");
+  requireOnline("La gestion du catalogue");
+  const name = i.name.trim();
+  assert(name.length >= 2, "Le nom du produit est obligatoire.");
+  assert(i.unit.trim().length > 0, "L'unité est obligatoire (ex. kg, sac).");
+  if (i.price !== undefined) assert(Number.isInteger(i.price) && i.price >= 0, "Prix invalide.");
+  const list = await ds().repos.products.list();
+  assert(!list.some((p) => !p.deleted && p.id !== i.id && p.name.toLowerCase() === name.toLowerCase()), "Un produit porte déjà ce nom.");
+  const data = { name, unit: i.unit.trim(), category: i.category?.trim() || undefined, price: i.price, description: i.description?.trim() || undefined };
+  if (i.id) {
+    const before = list.find((p) => p.id === i.id);
+    assert(!!before, "Produit introuvable.");
+    const p = await ds().repos.products.update(i.id, { ...data, updatedAt: now() });
+    await audit(me, "Produit modifié", "products", i.id, name, { before, after: data });
+    return p;
+  }
+  let id = slugify(name);
+  while (list.some((p) => p.id === id)) id = `${slugify(name)}-${Math.floor(100 + Math.random() * 900)}`;
+  const p = await ds().repos.products.create({ id, ...data, createdAt: now(), createdBy: me.id });
+  await audit(me, "Produit créé", "products", id, name, { after: data });
+  return p;
+}
+
+export async function setProductArchived(me: User, id: Id, archived: boolean) {
+  assert(me.role === "patron", "Seul le patron gère le catalogue des produits.");
+  requireOnline("La gestion du catalogue");
+  const p = await ds().repos.products.get(id);
+  assert(!!p, "Produit introuvable.");
+  await ds().repos.products.update(id, { archived, updatedAt: now() });
+  await audit(me, archived ? "Produit archivé" : "Produit réactivé", "products", id, p!.name);
 }

@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Check, Handshake, Plus, Undo2, X } from "lucide-react";
 import { askReason, confirm, fail } from "@/components/alerts";
 import { useApp } from "@/components/DataProvider";
-import { ContractModal, nameOf } from "@/components/domain";
+import { activeProducts } from "@/lib/catalog";
+import { ContractModal, nameOf, ProductSelect } from "@/components/domain";
 import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Progress, Select, Textarea } from "@/components/ui";
 import { date, fcfa, group, prixKg, productLabel, relative, tonnes } from "@/lib/format";
 import type { Need, Offer, Product } from "@/lib/types";
@@ -120,8 +121,8 @@ export default function Besoins() {
 }
 
 function NeedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { me, run } = useApp();
-  const [f, setF] = useState({ product: "soja" as Product, tons: "", price: "", deadline: new Date(Date.now() + 45 * 864e5).toISOString().slice(0, 10), zone: "", comment: "" });
+  const { db, me, run } = useApp();
+  const [f, setF] = useState({ product: (activeProducts(db)[0]?.id ?? "") as Product, tons: "", price: "", deadline: new Date(Date.now() + 45 * 864e5).toISOString().slice(0, 10), zone: "", comment: "" });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const qtyKg = Math.round(Number(f.tons.replace(",", ".")) * 1000);
@@ -134,7 +135,7 @@ function NeedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         if (r) onClose();
       }}>Publier le besoin</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Produit"><Select value={f.product} onChange={set("product")}><option value="soja">Soja</option><option value="cacao">Cacao</option></Select></Field>
+        <Field label="Produit"><ProductSelect value={f.product} onChange={(v) => setF({ ...f, product: v })} /></Field>
         <Field label="Quantité visée (tonnes)" hint={qtyKg > 0 ? `${group(qtyKg)} kg` : undefined}><Input inputMode="decimal" value={f.tons} onChange={set("tons")} placeholder="ex. 500" /></Field>
         <Field label="Prix indicatif (FCFA/kg)"><Input inputMode="numeric" value={f.price} onChange={set("price")} placeholder="ex. 350" /></Field>
         <Field label="Échéance souhaitée"><Input type="date" value={f.deadline} onChange={set("deadline")} /></Field>

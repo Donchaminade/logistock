@@ -38,7 +38,7 @@ function Recu() {
             <div className="num text-[12.5px] text-white/60">N° {a.receiptNo} · {date(a.date)}</div>
           </div>
         </header>
-        <div className="bg-brand-50 py-2 text-center text-[11px] font-bold tracking-[0.08em] text-brand-700">DOCUMENT FICTIF — DÉMONSTRATION LOGISTOCK</div>
+        <div className="bg-brand-50 py-2 text-center text-[11px] font-bold tracking-[0.08em] text-brand-700">DOCUMENT FICTIF — DÉMONSTRATION MAROCKSTOCK</div>
         <div className="p-8">
           <div className="text-[13px] text-muted">Montant remis</div>
           <div className="num text-[36px] font-bold tracking-[-0.03em]">{fcfa(a.amount)}</div>

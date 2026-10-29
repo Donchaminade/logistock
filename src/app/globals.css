@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Charte LogiStock : bleu, noir, blanc. Gris neutres pour bordures et fonds. Aucun dégradé. */
+/* Charte MarockStock : bleu, noir, blanc. Gris neutres pour bordures et fonds. Aucun dégradé. */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --color-brand-50: #eef3ff;

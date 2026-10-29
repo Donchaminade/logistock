@@ -1,10 +1,27 @@
-// Modèle de données de la maquette LogiStock (aligné sur le cahier des charges, §6.3).
+// Modèle de données de la maquette MarockStock (aligné sur le cahier des charges, §6.3).
 // Montants : entiers en FCFA. Quantités : entiers en kg. Dates : chaînes ISO 8601.
 
 export type Role = "patron" | "admin" | "gestionnaire" | "fournisseur" | "magasinier" | "chauffeur" | "comptable";
 /** Rôles soumis à la matrice de droits (le patron a tous les droits). */
 export type ManagedRole = Exclude<Role, "patron">;
-export type Product = "soja" | "cacao";
+/** Identifiant d'un produit du catalogue du patron (ex. « soja », « cacao », « pr-… »). */
+export type Product = string;
+
+/** Produit du catalogue : créé, modifié et archivé par le patron uniquement. */
+export interface CatalogProduct extends Entity {
+  name: string;
+  /** Unité de suivi (kg, sac, tonne…). Les quantités restent saisies en kg dans les flux. */
+  unit: string;
+  category?: string;
+  /** Prix indicatif d'achat, FCFA par unité (facultatif). */
+  price?: number;
+  description?: string;
+  /** Archivé : n'apparaît plus dans les listes de choix, l'historique est conservé. */
+  archived?: boolean;
+  createdAt: string;
+  createdBy?: Id;
+  updatedAt?: string;
+}
 export type Id = string;
 
 export interface Entity {
@@ -517,7 +534,7 @@ export interface Settings extends Entity {
   /** Blocage d'une nouvelle avance si la dette ouverte du fournisseur dépasse ce montant (0 = désactivé). */
   debtBlockThreshold: number;
   /** Prix de revente estimés, pour la marge (§1.7). */
-  resalePrice: Record<Product, number>;
+  resalePrice: Record<string, number>;
   commissionRules: CommissionRule[];
   seededAt: string;
   /** Employés que le comptable est autorisé à suivre. Réservé au patron. */
@@ -606,6 +623,7 @@ export interface TrackShare extends Entity {
 
 /** Instantané complet des données, tel que le reçoit l'interface. */
 export interface Database {
+  products: CatalogProduct[];
   users: User[];
   devices: Device[];
   needs: Need[];

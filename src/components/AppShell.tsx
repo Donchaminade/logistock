@@ -142,7 +142,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Barre du haut */}
       <header className="no-print sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
-          <Link href="/accueil/" className="lg:hidden" aria-label="Accueil LogiStock">
+          <Link href="/accueil/" className="lg:hidden" aria-label="Accueil MarockStock">
             <LogoMark className="size-8" />
           </Link>
           <div className="min-w-0 flex-1">
@@ -151,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-line-2">/</span>
               <span className="truncate text-[13px] font-semibold">{me.title}</span>
             </div>
-            <div className="truncate text-[14px] font-bold lg:hidden">LogiStock</div>
+            <div className="truncate text-[14px] font-bold lg:hidden">MarockStock</div>
           </div>
           <span className="hidden rounded-full border border-line-2 px-2.5 py-1 text-[11.5px] font-semibold text-muted xl:inline">Données fictives — démo</span>
           <NetworkIndicator db={db} me={me} />

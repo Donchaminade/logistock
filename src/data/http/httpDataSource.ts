@@ -5,7 +5,7 @@ import type { ChangeOrigin, DataSource, DeviceStore, PhotoStore, Repositories, R
 
 /** Correspondance collection → ressource REST. À ajuster selon les contrôleurs Spring Boot. */
 export const ENDPOINTS: Record<Collection, string> = {
-  users: "users", needs: "needs", offers: "offers", contracts: "contracts", revisions: "price-revisions",
+  products: "products", users: "users", needs: "needs", offers: "offers", contracts: "contracts", revisions: "price-revisions",
   advances: "advances", locations: "locations", transports: "transports", traces: "lot-trace-events",
   checkins: "arrival-checkins", deliveries: "deliveries", partials: "partial-deliveries",
   declarations: "declarations", payments: "repayments", expenses: "expenses", debts: "debts",

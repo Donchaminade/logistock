@@ -1,4 +1,4 @@
-// Parcours complet LogiStock sur les 3 rôles (Playwright, Chromium headless).
+// Parcours complet MarockStock sur les 3 rôles (Playwright, Chromium headless).
 import { chromium } from "playwright";
 import fs from "node:fs";
 import { acceptConsent, GEO } from "./consent.mjs";

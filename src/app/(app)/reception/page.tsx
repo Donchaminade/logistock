@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, ChevronRight, PackageCheck, Scale, Truck, Warehouse } from "lucide-react";
 import { success } from "@/components/alerts";
 import { useApp } from "@/components/DataProvider";
+import { activeProducts } from "@/lib/catalog";
 import { nameOf } from "@/components/domain";
 import { Badge, Button, Card, CardTitle, Empty, PageHeader, Stat } from "@/components/ui";
 import { dateTime, prixKg, productLabel, tonnes } from "@/lib/format";
@@ -21,7 +22,7 @@ export default function Reception() {
   const toWeigh = ts.filter((t) => t.status === "arrive" && !deliveries.some((d) => d.transportId === t.id));
   const toReceive = deliveries.filter((d) => d.status === "pesee");
   const received = deliveries.filter((d) => d.status === "receptionnee");
-  const stock = (["soja", "cacao"] as const).map((p) => ({ p, kg: received.filter((d) => db.contracts.find((c) => c.id === d.contractId)?.product === p).reduce((s, d) => s + d.netKg, 0) }));
+  const stock = activeProducts(db).map((x) => x.id).map((p) => ({ p, kg: received.filter((d) => db.contracts.find((c) => c.id === d.contractId)?.product === p).reduce((s, d) => s + d.netKg, 0) }));
   const gaps = received.filter((d) => { const t = ts.find((x) => x.id === d.transportId); return t && Math.abs(d.netKg - t.tonsKg) / t.tonsKg > db.settings[0]!.weightGapThresholdPct / 100; });
 
   const Row = ({ t, cta, tid }: { t: Transport; cta: string; tid: string }) => (
